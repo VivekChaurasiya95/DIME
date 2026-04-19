@@ -89,6 +89,10 @@ const rangeOptions = [
   { value: "365", label: "Last 12 Months" },
 ];
 
+const getRangeLabel = (value: string | null) =>
+  rangeOptions.find((option) => option.value === value)?.label ??
+  "Choose range";
+
 const sentimentColors: Record<string, string> = {
   Positive: "#22c55e",
   Neutral: "#f59e0b",
@@ -170,6 +174,11 @@ export default function MarketInsightsPage() {
   const [marketData, setMarketData] =
     useState<BackendMarketData>(defaultMarketData);
   const [isSampledData, setIsSampledData] = useState(false);
+  const [chartsReady, setChartsReady] = useState(false);
+
+  useEffect(() => {
+    setChartsReady(true);
+  }, []);
 
   const fetchMarketData = useCallback(async () => {
     try {
@@ -266,12 +275,26 @@ export default function MarketInsightsPage() {
 
   const marketPainPercent = Math.round(marketData.market_pain * 100);
 
+  const getIndustryLabel = (value: string | null) => {
+    if (!value || value === "all") {
+      return "All Industries";
+    }
+
+    return value;
+  };
+
   const summaryText = useMemo(() => {
-    if (marketData.insight_summary && marketData.insight_summary.trim().length > 0) {
+    if (
+      marketData.insight_summary &&
+      marketData.insight_summary.trim().length > 0
+    ) {
       return marketData.insight_summary;
     }
 
-    const top = topKeywords.slice(0, 2).map((item) => item.word).join(" and ");
+    const top = topKeywords
+      .slice(0, 2)
+      .map((item) => item.word)
+      .join(" and ");
     const sentimentTilt =
       marketData.sentiment_distribution.negative >= 25
         ? "elevated dissatisfaction"
@@ -318,7 +341,9 @@ export default function MarketInsightsPage() {
 
           <Select value={rangeDays} onValueChange={setRangeDays}>
             <SelectTrigger className="h-10 w-[170px] rounded-xl border-slate-200 bg-white text-slate-700">
-              <SelectValue placeholder="Choose range" />
+              <SelectValue placeholder="Choose range">
+                {(value: string | null) => getRangeLabel(value)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {rangeOptions.map((option) => (
@@ -348,7 +373,9 @@ export default function MarketInsightsPage() {
               </p>
               <Select value={industry} onValueChange={setIndustry}>
                 <SelectTrigger className="mt-2 h-10 rounded-lg border-slate-200 bg-slate-50 text-slate-700">
-                  <SelectValue placeholder="Industry" />
+                  <SelectValue placeholder="Industry">
+                    {(value: string | null) => getIndustryLabel(value)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {availableIndustries.map((item) => (
@@ -391,7 +418,7 @@ export default function MarketInsightsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 min-[1700px]:grid-cols-2">
         <Card className="rounded-xl border-slate-200 shadow-sm">
           <CardHeader className="pb-1">
             <CardTitle className="text-lg font-bold text-slate-900">
@@ -400,34 +427,48 @@ export default function MarketInsightsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[260px] w-full">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <PieChart>
-                  <Pie
-                    data={sentimentChartData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={62}
-                    outerRadius={94}
-                    paddingAngle={2}
-                  >
-                    {sentimentChartData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => `${value}%`} />
-                </PieChart>
-              </ResponsiveContainer>
+              {chartsReady ? (
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  minWidth={0}
+                  minHeight={0}
+                >
+                  <PieChart>
+                    <Pie
+                      data={sentimentChartData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={62}
+                      outerRadius={94}
+                      paddingAngle={2}
+                    >
+                      {sentimentChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => `${value}%`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full animate-pulse rounded-lg bg-slate-100" />
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-2 pt-1">
               {sentimentChartData.map((item) => (
-                <div key={item.name} className="rounded-lg bg-slate-50 p-2 text-center">
+                <div
+                  key={item.name}
+                  className="rounded-lg bg-slate-50 p-2 text-center"
+                >
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     {item.name}
                   </p>
-                  <p className="mt-1 text-lg font-bold text-slate-900">{item.value}%</p>
+                  <p className="mt-1 text-lg font-bold text-slate-900">
+                    {item.value}%
+                  </p>
                 </div>
               ))}
             </div>
@@ -442,32 +483,51 @@ export default function MarketInsightsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[320px] w-full">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <BarChart
-                  data={topKeywords}
-                  layout="vertical"
-                  margin={{ top: 8, right: 18, left: 24, bottom: 8 }}
+              {chartsReady ? (
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  minWidth={0}
+                  minHeight={0}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eef2f7" />
-                  <XAxis type="number" axisLine={false} tickLine={false} />
-                  <YAxis
-                    dataKey="word"
-                    type="category"
-                    axisLine={false}
-                    tickLine={false}
-                    width={120}
-                    tick={{ fill: "#334155", fontSize: 12, fontWeight: 600 }}
-                  />
-                  <Tooltip formatter={(value: number) => [`${value}`, "Frequency"]} />
-                  <Bar dataKey="frequency" fill="#ea580c" radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+                  <BarChart
+                    data={topKeywords}
+                    layout="vertical"
+                    margin={{ top: 8, right: 18, left: 24, bottom: 8 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      horizontal={false}
+                      stroke="#eef2f7"
+                    />
+                    <XAxis type="number" axisLine={false} tickLine={false} />
+                    <YAxis
+                      dataKey="word"
+                      type="category"
+                      axisLine={false}
+                      tickLine={false}
+                      width={120}
+                      tick={{ fill: "#334155", fontSize: 12, fontWeight: 600 }}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => [`${value}`, "Frequency"]}
+                    />
+                    <Bar
+                      dataKey="frequency"
+                      fill="#ea580c"
+                      radius={[0, 6, 6, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full animate-pulse rounded-lg bg-slate-100" />
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 min-[1700px]:grid-cols-2">
         <Card className="rounded-xl border-slate-200 shadow-sm">
           <CardHeader className="pb-1">
             <CardTitle className="text-lg font-bold text-slate-900">
@@ -481,34 +541,49 @@ export default function MarketInsightsPage() {
               </p>
             )}
             <div className="h-[280px] w-full">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <LineChart
-                  data={marketData.review_trend}
-                  margin={{ top: 8, right: 8, left: -10, bottom: 0 }}
+              {chartsReady ? (
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  minWidth={0}
+                  minHeight={0}
                 >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
-                  <XAxis
-                    dataKey="month"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "#64748b", fontSize: 11, fontWeight: 600 }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "#94a3b8", fontSize: 10 }}
-                  />
-                  <Tooltip formatter={(value: number) => [`${value}`, "Reviews"]} />
-                  <Line
-                    type="monotone"
-                    dataKey="count"
-                    stroke="#2563eb"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: "#2563eb" }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+                  <LineChart
+                    data={marketData.review_trend}
+                    margin={{ top: 8, right: 8, left: -10, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="#eef2f7"
+                    />
+                    <XAxis
+                      dataKey="month"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: "#64748b", fontSize: 11, fontWeight: 600 }}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: "#94a3b8", fontSize: 10 }}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => [`${value}`, "Reviews"]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#2563eb"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: "#2563eb" }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full animate-pulse rounded-lg bg-slate-100" />
+              )}
             </div>
           </CardContent>
         </Card>
@@ -521,33 +596,47 @@ export default function MarketInsightsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[220px] w-full">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <PieChart>
-                  <Pie
-                    data={datasetDistributionData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={48}
-                    outerRadius={80}
-                  >
-                    {datasetDistributionData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => `${value}%`} />
-                </PieChart>
-              </ResponsiveContainer>
+              {chartsReady ? (
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  minWidth={0}
+                  minHeight={0}
+                >
+                  <PieChart>
+                    <Pie
+                      data={datasetDistributionData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={48}
+                      outerRadius={80}
+                    >
+                      {datasetDistributionData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => `${value}%`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full animate-pulse rounded-lg bg-slate-100" />
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
               {datasetDistributionData.map((item) => (
-                <div key={item.name} className="rounded-lg bg-slate-50 p-2 text-center">
+                <div
+                  key={item.name}
+                  className="rounded-lg bg-slate-50 p-2 text-center"
+                >
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {item.name}
                   </p>
-                  <p className="mt-1 text-base font-bold text-slate-900">{item.value}%</p>
+                  <p className="mt-1 text-base font-bold text-slate-900">
+                    {item.value}%
+                  </p>
                 </div>
               ))}
             </div>
@@ -555,7 +644,7 @@ export default function MarketInsightsPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 min-[1700px]:grid-cols-2">
         <Card className="rounded-xl border-slate-200 shadow-sm">
           <CardHeader className="pb-1">
             <CardTitle className="text-lg font-bold text-slate-900">
@@ -564,8 +653,12 @@ export default function MarketInsightsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-end justify-between">
-              <p className="text-4xl font-bold text-slate-900">{marketData.market_pain.toFixed(2)}</p>
-              <p className="text-sm font-semibold text-slate-500">{marketPainPercent}%</p>
+              <p className="text-4xl font-bold text-slate-900">
+                {marketData.market_pain.toFixed(2)}
+              </p>
+              <p className="text-sm font-semibold text-slate-500">
+                {marketPainPercent}%
+              </p>
             </div>
             <div className="mt-3 h-2.5 w-full rounded-full bg-slate-200">
               <div
@@ -574,7 +667,8 @@ export default function MarketInsightsPage() {
               />
             </div>
             <p className="mt-2 text-sm text-slate-600">
-              Higher score indicates stronger unresolved user pain in current market offerings.
+              Higher score indicates stronger unresolved user pain in current
+              market offerings.
             </p>
           </CardContent>
         </Card>
@@ -586,7 +680,9 @@ export default function MarketInsightsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm leading-relaxed text-slate-700">{summaryText}</p>
+            <p className="text-sm leading-relaxed text-slate-700">
+              {summaryText}
+            </p>
           </CardContent>
         </Card>
       </div>

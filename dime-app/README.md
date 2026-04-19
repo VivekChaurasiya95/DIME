@@ -16,6 +16,19 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Prisma Commands (Use These)
+
+Run Prisma commands from `dime-app` using the scripts below so Prisma Studio and migrations always point to the app schema/database:
+
+```bash
+npm run prisma:validate
+npm run prisma:generate
+npm run prisma:migrate-status
+npm run prisma:studio
+```
+
+Prisma Studio runs on `http://localhost:5555`.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

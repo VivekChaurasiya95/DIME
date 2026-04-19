@@ -7,8 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-app-sans);
+  --font-mono: var(--font-app-mono);
+  --font-display: var(--font-app-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -122,10 +123,29 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family:
+      var(--font-app-sans), "Manrope", "Inter", system-ui, sans-serif;
     line-height: 1.55;
+    overflow-x: hidden;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family:
+      var(--font-app-display), "Space Grotesk", "Inter", system-ui, sans-serif;
+    letter-spacing: -0.015em;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
   }
   html {
     @apply font-sans;
@@ -136,22 +156,145 @@
 
 @layer components {
   .app-page {
-    @apply mx-auto w-full max-w-[1400px] pt-1 pb-6;
+    @apply mx-auto w-full min-w-0 max-w-[1400px] pt-1 pb-6;
   }
 
   .app-page-tight {
-    @apply mx-auto w-full max-w-[1100px] pt-1 pb-6;
+    @apply mx-auto w-full min-w-0 max-w-[1100px] pt-1 pb-6;
   }
 
   .app-title {
-    @apply text-3xl font-black tracking-tight text-slate-900 md:text-4xl;
+    @apply text-3xl font-black tracking-tight text-slate-900 md:text-4xl dark:text-slate-100;
+    font-family:
+      var(--font-app-display), "Space Grotesk", "Inter", system-ui, sans-serif;
   }
 
   .app-subtitle {
-    @apply mt-1 text-sm font-medium text-slate-500 md:text-base;
+    @apply mt-1 text-sm font-medium text-slate-500 md:text-base dark:text-slate-400;
   }
 
   .app-surface {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900;
+  }
+}
+
+@layer utilities {
+  .dark {
+    color-scheme: dark;
+  }
+
+  .dark .text-slate-900,
+  .dark .text-gray-900 {
+    color: rgb(241 245 249 / 1) !important;
+  }
+
+  .dark .text-slate-800,
+  .dark .text-slate-700,
+  .dark .text-gray-700 {
+    color: rgb(226 232 240 / 1) !important;
+  }
+
+  .dark .text-slate-600,
+  .dark .text-slate-500 {
+    color: rgb(148 163 184 / 1) !important;
+  }
+
+  .dark .text-slate-400 {
+    color: rgb(203 213 225 / 1) !important;
+  }
+
+  .dark .hover\:text-slate-700:hover,
+  .dark .hover\:text-slate-600:hover {
+    color: rgb(241 245 249 / 1) !important;
+  }
+
+  .dark .bg-white,
+  .dark .bg-\[\#ffffff\] {
+    background-color: rgb(15 23 42 / 1) !important;
+  }
+
+  .dark .bg-slate-50,
+  .dark .bg-slate-100,
+  .dark .bg-gray-50 {
+    background-color: rgb(30 41 59 / 1) !important;
+  }
+
+  .dark .bg-\[\#fafafa\] {
+    background-color: rgb(2 6 23 / 1);
+  }
+
+  .dark .bg-\[\#fbfcff\] {
+    background-color: rgb(15 23 42 / 0.9);
+  }
+
+  .dark .bg-\[\#fff8f3\],
+  .dark .bg-\[\#fff6ef\],
+  .dark .bg-\[\#f3f7ff\],
+  .dark .bg-\[\#f2fcf5\],
+  .dark .bg-\[\#faf5ff\] {
+    background-color: rgb(30 41 59 / 0.8);
+  }
+
+  .dark .bg-orange-100,
+  .dark .bg-blue-50,
+  .dark .bg-green-50,
+  .dark .bg-purple-50 {
+    background-color: rgb(51 65 85 / 0.82);
+  }
+
+  .dark .hover\:bg-white:hover,
+  .dark .hover\:bg-slate-50:hover,
+  .dark .hover\:bg-orange-100:hover {
+    background-color: rgb(51 65 85 / 1) !important;
+  }
+
+  .dark .border-slate-200,
+  .dark .border-slate-100,
+  .dark .border-slate-300,
+  .dark .border-gray-200 {
+    border-color: rgb(51 65 85 / 1) !important;
+  }
+
+  .dark .border-orange-100,
+  .dark .border-blue-100,
+  .dark .border-green-100,
+  .dark .border-purple-100 {
+    border-color: rgb(100 116 139 / 0.62);
+  }
+
+  .dark .bg-orange-50,
+  .dark .bg-orange-50\/10,
+  .dark .bg-orange-50\/20,
+  .dark .bg-orange-50\/30,
+  .dark .bg-orange-50\/40,
+  .dark .hover\:bg-orange-50:hover,
+  .dark .hover\:bg-orange-50\/40:hover,
+  .dark .hover\:bg-orange-50\/80:hover {
+    background-color: rgb(124 45 18 / 0.28);
+  }
+
+  .dark .border-orange-200 {
+    border-color: rgb(194 65 12 / 0.55);
+  }
+
+  .dark .hover\:border-orange-400:hover,
+  .dark .focus\:border-orange-400:focus,
+  .dark .focus\:border-orange-500:focus,
+  .dark .focus-visible\:border-orange-500:focus-visible {
+    border-color: rgb(251 146 60 / 0.85);
+  }
+
+  .dark .focus\:bg-white:focus,
+  .dark .focus-visible\:bg-white:focus-visible {
+    background-color: rgb(15 23 42 / 1) !important;
+  }
+
+  .dark .placeholder\:text-slate-400::placeholder,
+  .dark .placeholder\:text-slate-500::placeholder {
+    color: rgb(100 116 139 / 1) !important;
+  }
+
+  .dark .placeholder\:text-orange-900\/40::placeholder {
+    color: rgb(251 146 60 / 0.6);
   }
 }

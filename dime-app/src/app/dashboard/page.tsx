@@ -2,9 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, ResponsiveContainer, Tooltip, Cell } from "recharts";
+import { PieChart, Pie, Tooltip, Cell } from "recharts";
 import {
   AlertCircle,
   Lightbulb,
@@ -61,6 +62,10 @@ const rangeOptions = [
   { value: "90", label: "Last 90 Days" },
 ];
 
+const getRangeLabel = (value: string | null) =>
+  rangeOptions.find((option) => option.value === value)?.label ??
+  "Select range";
+
 const stopWords = new Set([
   "and",
   "the",
@@ -114,6 +119,23 @@ const defaultOverview: DashboardOverview = {
   recentActivity: [],
   marketTrends: [],
   quickInsight: "Add your first idea analysis to unlock personalized insights.",
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 15 },
+  },
 };
 
 export default function DashboardPage() {
@@ -225,9 +247,14 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto flex flex-col xl:flex-row gap-6">
+    <motion.div
+      className="w-full max-w-[1400px] mx-auto flex flex-col min-[1700px]:flex-row gap-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Main Dashboard Content */}
-      <div className="flex-1 space-y-6">
+      <div className="min-w-0 flex-1 space-y-6">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -255,110 +282,131 @@ export default function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-slate-200 shadow-sm rounded-xl">
-            <CardContent className="p-5">
-              <div className="mb-4 inline-flex rounded-lg bg-orange-50 p-2 text-[#ea580c]">
-                <Lightbulb className="h-5 w-5" />
-              </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Average Novelty Score
-              </p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">
-                {isLoading ? "--" : averageNoveltyScore.toFixed(2)}
-              </p>
-              <p className="mt-1 text-xs font-medium text-slate-500">
-                Based on validated analyses in your workspace
-              </p>
-            </CardContent>
-          </Card>
+          <motion.div
+            variants={itemVariants}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Card className="border-slate-200 shadow-sm rounded-xl h-full hover:border-[#ea580c] hover:shadow-[0_0_15px_rgba(234,88,12,0.3)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-5">
+                <div className="mb-4 inline-flex rounded-lg bg-orange-50 p-2 text-[#ea580c]">
+                  <Lightbulb className="h-5 w-5" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Average Novelty Score
+                </p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">
+                  {isLoading ? "--" : averageNoveltyScore.toFixed(2)}
+                </p>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  Based on validated analyses in your workspace
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <Card className="border-slate-200 shadow-sm rounded-xl">
-            <CardContent className="p-5">
-              <div className="mb-4 inline-flex rounded-lg bg-amber-50 p-2 text-amber-600">
-                <TrendingUp className="h-5 w-5" />
-              </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Average Market Pain
-              </p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">
-                {isLoading ? "--" : averageMarketPain.toFixed(2)}
-              </p>
-              <p className="mt-1 text-xs font-medium text-slate-500">
-                Estimated from dataset-backed demand signals
-              </p>
-            </CardContent>
-          </Card>
+          <motion.div
+            variants={itemVariants}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Card className="border-slate-200 shadow-sm rounded-xl h-full hover:border-[#ea580c] hover:shadow-[0_0_15px_rgba(234,88,12,0.3)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-5">
+                <div className="mb-4 inline-flex rounded-lg bg-amber-50 p-2 text-amber-600">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Average Market Pain
+                </p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">
+                  {isLoading ? "--" : averageMarketPain.toFixed(2)}
+                </p>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  Estimated from dataset-backed demand signals
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <Card className="border-slate-200 shadow-sm rounded-xl">
-            <CardContent className="p-5">
-              <div className="mb-4 inline-flex rounded-lg bg-slate-100 p-2 text-slate-700">
-                <Database className="h-5 w-5" />
-              </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Top Problem Keywords
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {topProblemKeywords.map((keyword) => (
-                  <span
-                    key={keyword}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700"
-                  >
-                    {keyword}
-                  </span>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div
+            variants={itemVariants}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Card className="border-slate-200 shadow-sm rounded-xl h-full hover:border-[#ea580c] hover:shadow-[0_0_15px_rgba(234,88,12,0.3)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-5">
+                <div className="mb-4 inline-flex rounded-lg bg-slate-100 p-2 text-slate-700">
+                  <Database className="h-5 w-5" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Top Problem Keywords
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {topProblemKeywords.map((keyword) => (
+                    <span
+                      key={keyword}
+                      className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-orange-100 hover:text-orange-700 hover:border-orange-200 transition-colors"
+                    >
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <Card className="border-slate-200 shadow-sm rounded-xl">
-            <CardContent className="p-5">
-              <div className="mb-4 inline-flex rounded-lg bg-emerald-50 p-2 text-emerald-700">
-                <Bookmark className="h-5 w-5" />
-              </div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Ideas Analyzed
-              </p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">
-                {isLoading ? "--" : overview.stats.ideasAnalyzed}
-              </p>
-              <p className="mt-1 text-xs font-medium text-slate-500">
-                Total analyses across selected date range
-              </p>
-            </CardContent>
-          </Card>
+          <motion.div
+            variants={itemVariants}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Card className="border-slate-200 shadow-sm rounded-xl h-full hover:border-[#ea580c] hover:shadow-[0_0_15px_rgba(234,88,12,0.3)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-5">
+                <div className="mb-4 inline-flex rounded-lg bg-emerald-50 p-2 text-emerald-700">
+                  <Bookmark className="h-5 w-5" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Ideas Analyzed
+                </p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">
+                  {isLoading ? "--" : overview.stats.ideasAnalyzed}
+                </p>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  Total analyses across selected date range
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
         {/* Lower Grid (Activity & Feed) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Opportunity Mix */}
-          <Card className="lg:col-span-2 border-slate-200 shadow-sm rounded-xl">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-bold text-slate-900">
-                Opportunity Mix Analytics
-              </CardTitle>
-              <Select value={selectedRange} onValueChange={setSelectedRange}>
-                <SelectTrigger className="h-9 border-slate-200 bg-slate-50 text-sm text-slate-600">
-                  <SelectValue placeholder="Select range" />
-                </SelectTrigger>
-                <SelectContent>
-                  {rangeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardHeader>
-            <CardContent>
-              <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr] lg:items-center">
-                <div className="h-[280px] w-full">
-                  <ResponsiveContainer
-                    width="100%"
-                    height="100%"
-                    minWidth={0}
-                    minHeight={0}
-                  >
-                    <PieChart>
+          <motion.div variants={itemVariants} className="lg:col-span-2">
+            <Card className="border-slate-200 shadow-sm rounded-xl h-full hover:border-[#ea580c] hover:shadow-[0_0_15px_rgba(234,88,12,0.3)] transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg font-bold text-slate-900">
+                  Opportunity Mix Analytics
+                </CardTitle>
+                <Select value={selectedRange} onValueChange={setSelectedRange}>
+                  <SelectTrigger className="h-9 border-slate-200 bg-slate-50 text-sm text-slate-600">
+                    <SelectValue placeholder="Select range">
+                      {(value: string | null) => getRangeLabel(value)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rangeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardHeader>
+              <CardContent>
+                <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[280px_1fr] xl:items-center">
+                  <div className="h-[280px] w-full flex items-center justify-center">
+                    <PieChart width={280} height={280}>
                       <Pie
                         data={overview.opportunityMix}
                         cx="50%"
@@ -385,173 +433,183 @@ export default function DashboardPage() {
                         }}
                       />
                     </PieChart>
-                  </ResponsiveContainer>
-                </div>
+                  </div>
 
-                <div className="space-y-3">
-                  {overview.opportunityMix.map((item) => {
-                    const percentage =
-                      totalMix > 0
-                        ? Math.round((item.value / totalMix) * 100)
-                        : 0;
+                  <div className="space-y-3">
+                    {overview.opportunityMix.map((item) => {
+                      const percentage =
+                        totalMix > 0
+                          ? Math.round((item.value / totalMix) * 100)
+                          : 0;
 
-                    return (
-                      <div
-                        key={item.name}
-                        className="rounded-lg border border-slate-100 bg-slate-50 p-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="inline-flex items-center gap-2">
-                            <span
-                              className="h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: item.color }}
-                            ></span>
-                            <p className="text-sm font-bold text-slate-800">
-                              {item.name}
+                      return (
+                        <div
+                          key={item.name}
+                          className="rounded-lg border border-slate-100 bg-slate-50 p-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="inline-flex items-center gap-2">
+                              <span
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ backgroundColor: item.color }}
+                              ></span>
+                              <p className="text-sm font-bold text-slate-800">
+                                {item.name}
+                              </p>
+                            </div>
+                            <p className="text-sm font-semibold text-slate-600">
+                              {item.value} ideas
                             </p>
                           </div>
-                          <p className="text-sm font-semibold text-slate-600">
-                            {item.value} ideas
+
+                          <div className="mt-2 h-2 rounded-full bg-slate-200">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${percentage}%`,
+                                backgroundColor: item.color,
+                              }}
+                            ></div>
+                          </div>
+
+                          <p className="mt-1 text-xs font-medium text-slate-500">
+                            {percentage}% of portfolio
                           </p>
                         </div>
+                      );
+                    })}
 
-                        <div className="mt-2 h-2 rounded-full bg-slate-200">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${percentage}%`,
-                              backgroundColor: item.color,
-                            }}
-                          ></div>
-                        </div>
-
-                        <p className="mt-1 text-xs font-medium text-slate-500">
-                          {percentage}% of portfolio
-                        </p>
+                    {isLoading && (
+                      <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-500">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Updating analytics...
                       </div>
-                    );
-                  })}
-
-                  {isLoading && (
-                    <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-500">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Updating analytics...
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Recent Activity */}
-          <Card className="border-slate-200 shadow-sm rounded-xl flex flex-col">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-bold text-slate-900">
-                Recent Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <div className="space-y-6 flex-1">
-                {overview.recentActivity.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm font-medium text-slate-500">
-                    No recent activity yet. Start a new analysis to populate
-                    your timeline.
-                  </div>
-                ) : (
-                  overview.recentActivity.map((activity) => {
-                    const iconConfig = activityIcon(activity.type);
-                    const Icon = iconConfig.icon;
+          <motion.div variants={itemVariants} className="h-full">
+            <Card className="border-slate-200 shadow-sm rounded-xl flex flex-col h-full hover:border-[#ea580c] hover:shadow-[0_0_15px_rgba(234,88,12,0.3)] transition-all duration-300">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-bold text-slate-900">
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col">
+                <div className="space-y-6 flex-1">
+                  {overview.recentActivity.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm font-medium text-slate-500">
+                      No recent activity yet. Start a new analysis to populate
+                      your timeline.
+                    </div>
+                  ) : (
+                    overview.recentActivity.map((activity) => {
+                      const iconConfig = activityIcon(activity.type);
+                      const Icon = iconConfig.icon;
 
-                    return (
-                      <div key={activity.id} className="flex gap-4">
-                        <div className="mt-0.5">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center ${iconConfig.colorClass}`}
-                          >
-                            <Icon className="w-5 h-5" />
+                      return (
+                        <div key={activity.id} className="flex gap-4">
+                          <div className="mt-0.5">
+                            <div
+                              className={`w-10 h-10 rounded-full flex items-center justify-center ${iconConfig.colorClass}`}
+                            >
+                              <Icon className="w-5 h-5" />
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-900">
+                              {activity.title}
+                            </h4>
+                            <p className="text-sm text-slate-500 mt-0.5">
+                              {activity.subtitle}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1 font-medium">
+                              {activity.timeAgo}
+                            </p>
                           </div>
                         </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-slate-900">
-                            {activity.title}
-                          </h4>
-                          <p className="text-sm text-slate-500 mt-0.5">
-                            {activity.subtitle}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-1 font-medium">
-                            {activity.timeAgo}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                      );
+                    })
+                  )}
+                </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-100 text-center">
-                <button
-                  type="button"
-                  suppressHydrationWarning
-                  onClick={() => router.push("/dashboard/workspace")}
-                  className="text-sm font-bold text-[#ea580c] hover:text-[#d04e0a] transition-colors"
-                >
-                  View All Activity
-                </button>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+                  <button
+                    type="button"
+                    suppressHydrationWarning
+                    onClick={() => router.push("/dashboard/workspace")}
+                    className="text-sm font-bold text-[#ea580c] hover:text-[#d04e0a] transition-colors"
+                  >
+                    View All Activity
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </div>
 
       {/* Right Sidebar */}
-      <div className="w-full xl:w-80 space-y-6">
+      <motion.div
+        variants={itemVariants}
+        className="w-full min-[1700px]:w-80 space-y-6"
+      >
         <h3 className="text-lg font-bold text-slate-900 px-1 pt-1">
           Market Trends
         </h3>
 
         {overview.marketTrends.map((trend) => (
-          <Card
+          <motion.div
             key={trend.id}
-            onClick={() =>
-              router.push(
-                `/dashboard/market-analysis?industry=${encodeURIComponent(trend.category)}`,
-              )
-            }
-            className="border-slate-200 shadow-sm rounded-xl overflow-hidden hover:border-slate-300 transition-colors cursor-pointer"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <CardContent className="p-5">
-              <div className="flex justify-between items-start mb-2">
-                <span
-                  className="text-xs font-bold tracking-wider uppercase"
-                  style={{ color: trend.color }}
-                >
-                  {trend.category}
-                </span>
-                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-                  {trend.tag}
-                </span>
-              </div>
-              <h4 className="font-bold text-slate-900 text-base mb-4">
-                {trend.label}
-              </h4>
+            <Card
+              onClick={() =>
+                router.push(
+                  `/dashboard/market-analysis?industry=${encodeURIComponent(trend.category)}`,
+                )
+              }
+              className="border-slate-200 shadow-sm rounded-xl overflow-hidden hover:border-[#ea580c] hover:shadow-[0_0_15px_rgba(234,88,12,0.3)] transition-all duration-300 cursor-pointer"
+            >
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start mb-2">
+                  <span
+                    className="text-xs font-bold tracking-wider uppercase"
+                    style={{ color: trend.color }}
+                  >
+                    {trend.category}
+                  </span>
+                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                    {trend.tag}
+                  </span>
+                </div>
+                <h4 className="font-bold text-slate-900 text-base mb-4">
+                  {trend.label}
+                </h4>
 
-              <div className="space-y-4">
-                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${trend.growth}%`,
-                      backgroundColor: trend.color,
-                    }}
-                  ></div>
+                <div className="space-y-4">
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${trend.growth}%`,
+                        backgroundColor: trend.color,
+                      }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-medium text-slate-500">
+                    <span>Growth: {trend.growth}%</span>
+                    <span>Sample: {trend.sample} ideas</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-xs font-medium text-slate-500">
-                  <span>Growth: {trend.growth}%</span>
-                  <span>Sample: {trend.sample} ideas</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
 
         <h3 className="text-lg font-bold text-slate-900 px-1 pt-4">
@@ -559,26 +617,28 @@ export default function DashboardPage() {
         </h3>
 
         {/* Pro Tip Card */}
-        <Card className="bg-[#ea580c] text-white border-none shadow-md shadow-orange-500/20 rounded-xl overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-bl-full -mr-16 -mt-16"></div>
-          <CardContent className="p-6 relative z-10">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-orange-200 mb-3 block">
-              PRO TIP
-            </span>
-            <p className="font-semibold text-lg leading-snug mb-5">
-              {overview.quickInsight}
-            </p>
-            <button
-              type="button"
-              suppressHydrationWarning
-              onClick={() => router.push("/dashboard/market-analysis")}
-              className="text-sm font-bold text-white underline underline-offset-4 hover:text-orange-100 transition-colors inline-flex items-center"
-            >
-              Read Insight
-            </button>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <Card className="bg-[#ea580c] text-white border-none shadow-md shadow-orange-500/20 rounded-xl overflow-hidden relative hover:shadow-[0_0_20px_rgba(234,88,12,0.6)] transition-all duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-bl-full -mr-16 -mt-16"></div>
+            <CardContent className="p-6 relative z-10">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-orange-200 mb-3 block">
+                PRO TIP
+              </span>
+              <p className="font-semibold text-lg leading-snug mb-5">
+                {overview.quickInsight}
+              </p>
+              <button
+                type="button"
+                suppressHydrationWarning
+                onClick={() => router.push("/dashboard/market-analysis")}
+                className="text-sm font-bold text-white underline underline-offset-4 hover:text-orange-100 transition-colors inline-flex items-center"
+              >
+                Read Insight
+              </button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }

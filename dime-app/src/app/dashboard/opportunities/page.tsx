@@ -96,6 +96,19 @@ const teamSizeAdjustment: Record<string, number> = {
   startup: 12,
 };
 
+const complexityLabels: Record<string, string> = {
+  low: "Low Complexity",
+  medium: "Medium Complexity",
+  high: "High Complexity",
+};
+
+const teamSizeLabels: Record<string, string> = {
+  solo: "Solo Team",
+  small: "Small Team (2-5)",
+  medium: "Medium Team (6-15)",
+  startup: "Startup Team (15+)",
+};
+
 export default function OpportunityMatrixPage() {
   const [industry, setIndustry] = useState("all");
   const [status, setStatus] = useState("all");
@@ -105,6 +118,11 @@ export default function OpportunityMatrixPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [chartReady, setChartReady] = useState(false);
+
+  useEffect(() => {
+    setChartReady(true);
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -220,12 +238,20 @@ export default function OpportunityMatrixPage() {
   };
 
   return (
-    <div className="app-page grid grid-cols-1 gap-6 xl:grid-cols-[1.7fr_360px] animate-fade-in">
+    <div className="app-page grid grid-cols-1 gap-6 min-[1700px]:grid-cols-[1.7fr_360px] animate-fade-in">
       <div className="flex min-w-0 flex-col">
         <div className="mb-5 flex flex-wrap items-end gap-3">
           <Select value={industry} onValueChange={setIndustry}>
             <SelectTrigger className="h-10 w-[180px] rounded-lg border-slate-200 bg-white text-sm font-semibold text-slate-700">
-              <SelectValue placeholder="Industry" />
+              <SelectValue placeholder="Industry">
+                {(value: string | null) => {
+                  if (!value || value === "all") {
+                    return "All Industries";
+                  }
+
+                  return value;
+                }}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {data.industries.map((item) => (
@@ -238,7 +264,15 @@ export default function OpportunityMatrixPage() {
 
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="h-10 w-[180px] rounded-lg border-slate-200 bg-white text-sm font-semibold text-slate-700">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="Status">
+                {(value: string | null) => {
+                  if (!value || value === "all") {
+                    return "All Statuses";
+                  }
+
+                  return value.toUpperCase();
+                }}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {data.statuses.map((item) => (
@@ -251,7 +285,13 @@ export default function OpportunityMatrixPage() {
 
           <Select value={complexity} onValueChange={setComplexity}>
             <SelectTrigger className="h-10 w-[180px] rounded-lg border-slate-200 bg-white text-sm font-semibold text-slate-700">
-              <SelectValue placeholder="Complexity" />
+              <SelectValue placeholder="Complexity">
+                {(value: string | null) =>
+                  value
+                    ? (complexityLabels[value] ?? "Complexity")
+                    : "Complexity"
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="low">Low Complexity</SelectItem>
@@ -262,7 +302,11 @@ export default function OpportunityMatrixPage() {
 
           <Select value={teamSize} onValueChange={setTeamSize}>
             <SelectTrigger className="h-10 w-[180px] rounded-lg border-slate-200 bg-white text-sm font-semibold text-slate-700">
-              <SelectValue placeholder="Team Size" />
+              <SelectValue placeholder="Team Size">
+                {(value: string | null) =>
+                  value ? (teamSizeLabels[value] ?? "Team Size") : "Team Size"
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="solo">Solo Team</SelectItem>
@@ -312,78 +356,82 @@ export default function OpportunityMatrixPage() {
           </div>
 
           <div className="relative min-h-[420px] w-full flex-1">
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              minWidth={0}
-              minHeight={0}
-            >
-              <ScatterChart
-                margin={{ top: 20, right: 20, bottom: 30, left: 18 }}
+            {chartReady ? (
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={0}
+                minHeight={0}
               >
-                <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" />
-                <XAxis
-                  type="number"
-                  dataKey="feasibility"
-                  domain={[0, 100]}
-                  tick={{ fill: "#64748b", fontSize: 11 }}
-                />
-                <YAxis
-                  type="number"
-                  dataKey="opportunityScore"
-                  domain={[0, 100]}
-                  tick={{ fill: "#64748b", fontSize: 11 }}
-                />
-                <Tooltip
-                  cursor={{ strokeDasharray: "4 4" }}
-                  formatter={(value: number, name: string) => [value, name]}
-                />
-                <Scatter
-                  data={matrixPoints}
-                  onClick={(point: { payload?: MatrixPoint }) => {
-                    const id = point?.payload?.id;
-                    if (id) {
-                      setSelectedId(id);
-                    }
-                  }}
-                  shape={(props: {
-                    cx: number;
-                    cy: number;
-                    fill: string;
-                    payload: MatrixPoint;
-                  }) => {
-                    const { cx, cy, fill, payload } = props;
-                    const active = payload.id === selectedPoint?.id;
-                    return (
-                      <g>
-                        <circle
-                          cx={cx}
-                          cy={cy}
-                          r={active ? 9 : 6}
-                          fill={fill}
-                        />
-                        {active && (
+                <ScatterChart
+                  margin={{ top: 20, right: 20, bottom: 30, left: 18 }}
+                >
+                  <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" />
+                  <XAxis
+                    type="number"
+                    dataKey="feasibility"
+                    domain={[0, 100]}
+                    tick={{ fill: "#64748b", fontSize: 11 }}
+                  />
+                  <YAxis
+                    type="number"
+                    dataKey="opportunityScore"
+                    domain={[0, 100]}
+                    tick={{ fill: "#64748b", fontSize: 11 }}
+                  />
+                  <Tooltip
+                    cursor={{ strokeDasharray: "4 4" }}
+                    formatter={(value: number, name: string) => [value, name]}
+                  />
+                  <Scatter
+                    data={matrixPoints}
+                    onClick={(point: { payload?: MatrixPoint }) => {
+                      const id = point?.payload?.id;
+                      if (id) {
+                        setSelectedId(id);
+                      }
+                    }}
+                    shape={(props: {
+                      cx: number;
+                      cy: number;
+                      fill: string;
+                      payload: MatrixPoint;
+                    }) => {
+                      const { cx, cy, fill, payload } = props;
+                      const active = payload.id === selectedPoint?.id;
+                      return (
+                        <g>
                           <circle
                             cx={cx}
                             cy={cy}
-                            r={15}
-                            fill="none"
-                            stroke={fill}
-                            strokeWidth={2}
-                            opacity={0.5}
+                            r={active ? 9 : 6}
+                            fill={fill}
                           />
-                        )}
-                      </g>
-                    );
-                  }}
-                />
-              </ScatterChart>
-            </ResponsiveContainer>
+                          {active && (
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={15}
+                              fill="none"
+                              stroke={fill}
+                              strokeWidth={2}
+                              opacity={0.5}
+                            />
+                          )}
+                        </g>
+                      );
+                    }}
+                  />
+                </ScatterChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full animate-pulse rounded-lg bg-slate-100" />
+            )}
           </div>
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-col space-y-5 xl:max-w-sm">
+      <div className="flex min-w-0 flex-col space-y-5 min-[1700px]:max-w-sm">
         <h3 className="px-1 pt-1 text-lg font-bold text-slate-900">
           Selected Idea
         </h3>

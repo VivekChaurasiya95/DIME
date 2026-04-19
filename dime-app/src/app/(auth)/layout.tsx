@@ -7,7 +7,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-white dark:bg-slate-950">
       {/* Left Branding Panel */}
       <div className="hidden lg:flex flex-col flex-1 bg-gradient-to-br from-[#ea580c] to-[#c2410c] relative overflow-hidden text-white justify-center px-16 xl:px-24">
         {/* Subtle grid pattern overlay */}
@@ -56,7 +56,7 @@ export default function AuthLayout({
       </div>
 
       {/* Right Content Panel */}
-      <div className="flex-[1.2] flex flex-col items-center justify-center p-8 sm:p-12 lg:p-24 relative bg-[#fafafa]">
+      <div className="flex-[1.2] flex flex-col items-center justify-center p-8 sm:p-12 lg:p-24 relative bg-[#fafafa] dark:bg-slate-950">
         <div className="w-full max-w-[400px]">{children}</div>
       </div>
     </div>

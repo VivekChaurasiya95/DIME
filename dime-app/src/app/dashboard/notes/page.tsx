@@ -59,6 +59,19 @@ const tagClasses: Record<NoteTone, string> = {
 
 const toneOptions: NoteTone[] = ["orange", "blue", "green", "purple"];
 
+const dateRangeLabels: Record<string, string> = {
+  all: "All Time",
+  "7": "Last 7 Days",
+  "30": "Last 30 Days",
+  "90": "Last 90 Days",
+};
+
+const sortLabels: Record<string, string> = {
+  updated: "Updated",
+  oldest: "Oldest",
+  title: "Title",
+};
+
 const formatTime = (iso: string) => {
   const date = new Date(iso);
   const diff = Date.now() - date.getTime();
@@ -292,7 +305,13 @@ export default function NotesPage() {
           <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="h-11 w-[150px] rounded-xl border-slate-200 bg-white px-4 text-slate-700">
               <CalendarDays className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Date Range" />
+              <SelectValue placeholder="Date Range">
+                {(value: string | null) =>
+                  value
+                    ? (dateRangeLabels[value] ?? "Date Range")
+                    : "Date Range"
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Time</SelectItem>
@@ -305,7 +324,11 @@ export default function NotesPage() {
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="h-11 w-[130px] rounded-xl border-slate-200 bg-white px-4 text-slate-700">
               <ArrowUpDown className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Sort" />
+              <SelectValue placeholder="Sort">
+                {(value: string | null) =>
+                  value ? (sortLabels[value] ?? "Sort") : "Sort"
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="updated">Updated</SelectItem>
@@ -467,7 +490,7 @@ export default function NotesPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 min-[1700px]:grid-cols-4">
         {isLoading && (
           <div className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm font-semibold text-slate-500">
             Loading notes...

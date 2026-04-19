@@ -127,7 +127,9 @@ export default function AnalyzerResultsPage() {
         setIdea(payload);
       } catch (error: unknown) {
         setErrorMessage(
-          error instanceof Error ? error.message : "Unable to load idea analysis",
+          error instanceof Error
+            ? error.message
+            : "Unable to load idea analysis",
         );
       } finally {
         setIsLoading(false);
@@ -181,7 +183,9 @@ export default function AnalyzerResultsPage() {
 
     const differentiation = metrics.novelty >= 70 ? "strong" : "moderate";
     const painSignal =
-      metrics.marketPain >= 70 ? "clear user pain signal" : "emerging user pain signal";
+      metrics.marketPain >= 70
+        ? "clear user pain signal"
+        : "emerging user pain signal";
 
     return `${idea.title} shows ${differentiation} differentiation against nearby projects and a ${painSignal}. Opportunity Score is computed from Novelty Score and Market Pain, indicating ${metrics.opportunity >= 70 ? "high" : "moderate"} potential for focused validation in ${idea.industry}.`;
   }, [idea, metrics.marketPain, metrics.novelty, metrics.opportunity]);
@@ -253,7 +257,7 @@ export default function AnalyzerResultsPage() {
   if (isLoading) {
     return (
       <div className="w-full max-w-6xl mx-auto min-h-[50vh] flex items-center justify-center">
-        <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600">
+        <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading analysis results...
         </div>
@@ -268,7 +272,9 @@ export default function AnalyzerResultsPage() {
           <CardContent className="flex items-start gap-3 p-6">
             <AlertCircle className="mt-0.5 h-5 w-5 text-red-500" />
             <div>
-              <p className="text-base font-bold text-red-700">Unable to show results</p>
+              <p className="text-base font-bold text-red-700">
+                Unable to show results
+              </p>
               <p className="mt-1 text-sm text-red-600">
                 {errorMessage ?? "No analysis data is available for this idea."}
               </p>
@@ -288,16 +294,20 @@ export default function AnalyzerResultsPage() {
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 pb-12 animate-fade-in">
-      <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-start sm:justify-between dark:border-slate-700">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Idea Analysis</h1>
-          <p className="mt-1 text-base text-slate-600">{idea.title}</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            Idea Analysis
+          </h1>
+          <p className="mt-1 text-base text-slate-600 dark:text-slate-300">
+            {idea.title}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
             onClick={handleExport}
-            className="h-10 border-slate-200 text-slate-700"
+            className="h-10 border-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             <Download className="mr-2 h-4 w-4" />
             Export Report
@@ -308,20 +318,30 @@ export default function AnalyzerResultsPage() {
             className="h-10 bg-[#ea580c] text-white hover:bg-[#d04e0a]"
           >
             <BookmarkPlus className="mr-2 h-4 w-4" />
-            {isSaving ? "Saving..." : idea.status === "SAVED" ? "Snapshot Saved" : "Save Snapshot"}
+            {isSaving
+              ? "Saving..."
+              : idea.status === "SAVED"
+                ? "Snapshot Saved"
+                : "Save Snapshot"}
           </Button>
         </div>
       </div>
 
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-slate-200 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <CardHeader>
-          <CardTitle className="text-lg font-bold text-slate-900">Analysis Results</CardTitle>
+          <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            Analysis Results
+          </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-3">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Novelty Score</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{metrics.noveltyNormalized.toFixed(2)}</p>
-            <div className="mt-3 h-2 w-full rounded-full bg-slate-200">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Novelty Score
+            </p>
+            <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {metrics.noveltyNormalized.toFixed(2)}
+            </p>
+            <div className="mt-3 h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700">
               <div
                 className="h-2 rounded-full bg-[#ea580c]"
                 style={{ width: `${metrics.novelty}%` }}
@@ -329,55 +349,81 @@ export default function AnalyzerResultsPage() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Market Pain</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{metrics.marketPainNormalized.toFixed(2)}</p>
-            <p className="mt-2 text-xs font-medium text-slate-600">
-              Indicator: {metrics.marketPain >= 70 ? "High urgency" : metrics.marketPain >= 50 ? "Moderate urgency" : "Low urgency"}
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Market Pain
+            </p>
+            <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {metrics.marketPainNormalized.toFixed(2)}
+            </p>
+            <p className="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+              Indicator:{" "}
+              {metrics.marketPain >= 70
+                ? "High urgency"
+                : metrics.marketPain >= 50
+                  ? "Moderate urgency"
+                  : "Low urgency"}
             </p>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opportunity Score</p>
-            <p className="mt-2 text-2xl font-bold text-slate-900">{metrics.opportunityNormalized.toFixed(2)}</p>
-            <p className="mt-2 text-xs font-medium text-slate-600">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Opportunity Score
+            </p>
+            <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {metrics.opportunityNormalized.toFixed(2)}
+            </p>
+            <p className="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
               Derived as 0.6 x Novelty Score + 0.4 x Market Pain
             </p>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-slate-200 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <CardHeader>
-          <CardTitle className="text-lg font-bold text-slate-900">Similar Projects</CardTitle>
+          <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            Similar Projects
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {similarProjects.map((project) => (
-            <div key={project.id} className="rounded-lg border border-slate-200 bg-white p-4">
+            <div
+              key={project.id}
+              className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800/70"
+            >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-slate-900">{project.name}</p>
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {project.name}
+                </p>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
                   Similarity {project.similarity.toFixed(2)}
                 </span>
               </div>
-              <p className="mt-1.5 text-sm text-slate-600">{project.description}</p>
+              <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
+                {project.description}
+              </p>
             </div>
           ))}
         </CardContent>
       </Card>
 
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-slate-200 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <CardHeader>
-          <CardTitle className="text-lg font-bold text-slate-900">Key Problem Areas</CardTitle>
+          <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            Key Problem Areas
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           {keywords.length === 0 && (
-            <p className="text-sm text-slate-500">No keywords extracted yet.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No keywords extracted yet.
+            </p>
           )}
           {keywords.map((keyword) => (
             <span
               key={keyword}
-              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700"
+              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               {keyword}
             </span>
@@ -385,20 +431,25 @@ export default function AnalyzerResultsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-slate-200 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <CardHeader>
-          <CardTitle className="text-lg font-bold text-slate-900">Explanation</CardTitle>
+          <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            Explanation
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm leading-relaxed text-slate-700">{explanation}</p>
-          <p className="mt-3 text-xs text-slate-500">
-            Feasibility signal: {metrics.feasibility}% based on current project assumptions.
+          <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+            {explanation}
+          </p>
+          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            Feasibility signal: {metrics.feasibility}% based on current project
+            assumptions.
           </p>
         </CardContent>
       </Card>
 
       {errorMessage && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
           {errorMessage}
         </div>
       )}

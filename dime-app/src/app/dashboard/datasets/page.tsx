@@ -72,6 +72,19 @@ const iconByType = {
   stream: Share2,
 } as const;
 
+const typeFilterLabels: Record<string, string> = {
+  all: "All Types",
+  public: "PUBLIC",
+  premium: "PREMIUM",
+};
+
+const datasetSortLabels: Record<string, string> = {
+  relevance: "Relevance",
+  title: "Title",
+  newest: "Updated",
+  size: "Size",
+};
+
 export default function DatasetExplorerPage() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -262,13 +275,17 @@ export default function DatasetExplorerPage() {
             <Select
               value={typeFilter}
               onValueChange={(value) => {
-                setTypeFilter(value);
+                setTypeFilter(value ?? "all");
                 setPage(1);
               }}
             >
               <SelectTrigger className="h-10 rounded-lg border-slate-200 bg-white font-bold text-slate-700">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Type" />
+                <SelectValue placeholder="Type">
+                  {(value: string | null) =>
+                    value ? (typeFilterLabels[value] ?? "Type") : "Type"
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
@@ -282,13 +299,17 @@ export default function DatasetExplorerPage() {
             <Select
               value={sortBy}
               onValueChange={(value) => {
-                setSortBy(value);
+                setSortBy(value ?? "relevance");
                 setPage(1);
               }}
             >
               <SelectTrigger className="h-10 rounded-lg border-slate-200 bg-white font-bold text-slate-700">
                 <SortDesc className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Sort" />
+                <SelectValue placeholder="Sort">
+                  {(value: string | null) =>
+                    value ? (datasetSortLabels[value] ?? "Sort") : "Sort"
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="relevance">Relevance</SelectItem>

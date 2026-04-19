@@ -6,7 +6,11 @@
     "dev": "next dev --webpack -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "prisma:validate": "prisma validate --schema ./prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema ./prisma/schema.prisma",
+    "prisma:migrate-status": "prisma migrate status --schema ./prisma/schema.prisma",
+    "prisma:studio": "prisma studio --schema ./prisma/schema.prisma --port 5555"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -16,9 +20,13 @@
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "firebase": "^12.12.0",
+    "firebase-admin": "^13.8.0",
+    "framer-motion": "^12.38.0",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
+    "nodemailer": "^7.0.13",
     "npm-run-all": "^4.1.5",
     "prisma": "^5.22.0",
     "react": "19.2.3",

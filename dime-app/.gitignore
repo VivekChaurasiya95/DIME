@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+*firebase-adminsdk*.json
+*serviceAccount*.json
 
 # local prisma sqlite database
 /prisma/prisma/*.db
@@ -45,3 +47,4 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+dime-app\.env

@@ -1,12 +1,32 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  getUserAvatarUrl,
+  getUserDisplayName,
+  getUserInitials,
+} from "@/lib/user-profile";
 
 export default function SettingsPage() {
+  const { data: session } = useSession();
+  const displayName = getUserDisplayName(
+    session?.user?.name,
+    session?.user?.email,
+  );
+  const email = session?.user?.email ?? "";
+  const avatarUrl = getUserAvatarUrl(
+    session?.user?.image,
+    session?.user?.email,
+    session?.user?.name,
+  );
+  const initials = getUserInitials(displayName);
+
   return (
     <div className="app-page-tight space-y-6">
       <div>
@@ -24,20 +44,33 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+              <Avatar className="h-12 w-12 border border-slate-200">
+                <AvatarImage src={avatarUrl} alt={displayName} />
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">
+                  {displayName}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {email || "No email on profile"}
+                </p>
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="name">Display Name</Label>
-              <Input id="name" defaultValue="Vivek" className="h-10" />
+              <Input id="name" value={displayName} className="h-10" readOnly />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                defaultValue="vivek@example.com"
-                className="h-10"
-              />
+              <Input id="email" value={email} className="h-10" readOnly />
             </div>
-            <Button className="h-10 rounded-lg bg-[#ea580c] text-white hover:bg-[#d04e0a]">
-              Save Profile
+            <Button
+              className="h-10 rounded-lg bg-[#ea580c] text-white hover:bg-[#d04e0a]"
+              disabled
+            >
+              Synced From Account
             </Button>
           </CardContent>
         </Card>

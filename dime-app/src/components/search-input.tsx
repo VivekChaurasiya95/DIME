@@ -44,7 +44,7 @@ export function SearchInput() {
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Search ideas, markets or datasets..."
-        className="pl-10 h-10 w-full border-slate-200 bg-slate-50 rounded-lg text-sm focus-visible:ring-[#ea580c]"
+        className="pl-10 h-10 w-full border-slate-200 bg-slate-50 rounded-lg text-sm focus-visible:ring-[#ea580c] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
     </div>
   );

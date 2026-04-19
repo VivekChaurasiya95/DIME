@@ -95,19 +95,24 @@ function IdeaProgress({
   value: number;
   accent: "orange" | "blue";
 }) {
-  const indicatorClass = accent === "orange" ? "bg-[#ea580c]" : "bg-slate-400";
+  const indicatorClass =
+    accent === "orange" ? "bg-[#ea580c]" : "bg-sky-500 dark:bg-sky-400";
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-[12px] font-bold text-slate-500">
+      <div className="flex items-center justify-between text-[12px] font-bold text-slate-500 dark:text-slate-300">
         <span>Validation Progress</span>
         <span
-          className={accent === "orange" ? "text-[#ea580c]" : "text-slate-400"}
+          className={
+            accent === "orange"
+              ? "text-[#ea580c]"
+              : "text-sky-600 dark:text-sky-300"
+          }
         >
           {value}%
         </span>
       </div>
-      <div className="h-2 w-full rounded-full bg-slate-100">
+      <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-700/80">
         <div
           className={`h-2 rounded-full ${indicatorClass}`}
           style={{ width: `${value}%` }}
@@ -271,12 +276,12 @@ export default function WorkspacePage() {
 
   return (
     <div className="app-page">
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_280px]">
+      <div className="grid grid-cols-1 gap-6 min-[1700px]:grid-cols-[1fr_280px]">
         <section className="space-y-5">
-          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 dark:border-slate-700 dark:bg-slate-900/95">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-sm font-semibold text-slate-400">
+                <p className="text-sm font-semibold text-slate-400 dark:text-slate-500">
                   Workspace <span className="mx-1 text-slate-300">&gt;</span>{" "}
                   <span className="text-[#ea580c]">Innovations</span>
                 </p>
@@ -287,7 +292,7 @@ export default function WorkspacePage() {
                 <Button
                   variant="outline"
                   onClick={() => void loadWorkspace()}
-                  className="h-10 rounded-xl border-slate-200 bg-white px-4 text-slate-700"
+                  className="h-10 rounded-xl border-slate-200 bg-white px-4 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
                   <Filter className="mr-2 h-4 w-4" />
                   Refresh
@@ -302,7 +307,7 @@ export default function WorkspacePage() {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center gap-7 border-b border-slate-100 pb-1">
+            <div className="mt-5 flex flex-wrap items-center gap-7 border-b border-slate-100 pb-1 dark:border-slate-700">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -314,7 +319,7 @@ export default function WorkspacePage() {
                     className={`relative pb-3 text-sm font-semibold transition-colors ${
                       isActive
                         ? "text-[#ea580c]"
-                        : "text-slate-500 hover:text-slate-700"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                     }`}
                   >
                     {tab.label}
@@ -327,20 +332,20 @@ export default function WorkspacePage() {
             </div>
 
             {errorMessage && (
-              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 dark:border-red-900/60 dark:bg-red-950/35 dark:text-red-300">
                 {errorMessage}
               </div>
             )}
 
             <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
               {isLoading && payload.ideas.length === 0 && (
-                <div className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm font-semibold text-slate-500">
+                <div className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300">
                   Loading workspace ideas...
                 </div>
               )}
 
               {!isLoading && payload.ideas.length === 0 && (
-                <div className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm font-semibold text-slate-500">
+                <div className="col-span-full rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300">
                   No ideas found for this workspace tab.
                 </div>
               )}
@@ -348,21 +353,21 @@ export default function WorkspacePage() {
               {payload.ideas.map((idea) => (
                 <article
                   key={idea.id}
-                  className="rounded-2xl border border-slate-200 bg-[#fbfcff] p-4 shadow-sm"
+                  className="rounded-2xl border border-slate-200 bg-[#fbfcff] p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-md bg-blue-100 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-blue-700">
+                      <span className="rounded-md bg-blue-100 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
                         {idea.label}
                       </span>
-                      <span className="rounded-md bg-amber-100 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                      <span className="rounded-md bg-amber-100 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:bg-amber-900/35 dark:text-amber-200">
                         {idea.status}
                       </span>
                     </div>
                     <button
                       type="button"
                       suppressHydrationWarning
-                      className="text-slate-400 transition-colors hover:text-slate-600"
+                      className="text-slate-400 transition-colors hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
                       aria-label="Idea options"
                       onClick={() =>
                         router.push(
@@ -374,10 +379,10 @@ export default function WorkspacePage() {
                     </button>
                   </div>
 
-                  <h2 className="mt-4 text-[30px] font-black leading-[1.08] tracking-tight text-slate-900">
+                  <h2 className="mt-4 text-2xl sm:text-[30px] font-black leading-[1.08] tracking-tight text-slate-900 dark:text-slate-100">
                     {idea.title}
                   </h2>
-                  <p className="mt-2 overflow-hidden text-[15px] font-medium leading-7 text-slate-500 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                  <p className="mt-2 overflow-hidden text-[15px] font-medium leading-7 text-slate-500 dark:text-slate-300 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                     {idea.excerpt}
                   </p>
 
@@ -386,7 +391,7 @@ export default function WorkspacePage() {
                   </div>
 
                   <div className="mt-4 flex items-center justify-between">
-                    <p className="text-xs font-medium text-slate-400">
+                    <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
                       Updated recently
                     </p>
                     <button
@@ -400,7 +405,7 @@ export default function WorkspacePage() {
                       className={`text-sm font-bold ${
                         idea.accent === "orange"
                           ? "text-[#ea580c]"
-                          : "text-slate-500"
+                          : "text-slate-500 dark:text-slate-300"
                       }`}
                     >
                       View Details {"->"}
@@ -411,9 +416,9 @@ export default function WorkspacePage() {
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_250px]">
-              <article className="rounded-2xl border border-slate-200 bg-white">
-                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                  <h3 className="text-[24px] font-black tracking-tight text-slate-900">
+              <article className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-700">
+                  <h3 className="text-[24px] font-black tracking-tight text-slate-900 dark:text-slate-100">
                     Tasks
                   </h3>
                   <button
@@ -428,14 +433,14 @@ export default function WorkspacePage() {
 
                 <div className="px-4 py-2">
                   {payload.taskList.length === 0 && (
-                    <div className="py-3 text-sm font-medium text-slate-500">
+                    <div className="py-3 text-sm font-medium text-slate-500 dark:text-slate-400">
                       No tasks yet.
                     </div>
                   )}
                   {payload.taskList.map((task) => (
                     <div
                       key={task.id}
-                      className="flex items-start gap-3 border-b border-slate-100 py-3 last:border-b-0"
+                      className="flex items-start gap-3 border-b border-slate-100 py-3 last:border-b-0 dark:border-slate-700"
                     >
                       <button
                         type="button"
@@ -446,7 +451,7 @@ export default function WorkspacePage() {
                         className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-md border ${
                           task.done
                             ? "border-green-600 bg-green-600 text-white"
-                            : "border-slate-300 bg-white text-transparent"
+                            : "border-slate-300 bg-white text-transparent dark:border-slate-600 dark:bg-slate-800"
                         }`}
                       >
                         {updatingTaskId === task.id ? (
@@ -457,11 +462,11 @@ export default function WorkspacePage() {
                       </button>
                       <div className="min-w-0 flex-1">
                         <p
-                          className={`text-[15px] font-medium ${task.done ? "text-slate-400 line-through" : "text-slate-700"}`}
+                          className={`text-[15px] font-medium ${task.done ? "text-slate-400 line-through dark:text-slate-500" : "text-slate-700 dark:text-slate-200"}`}
                         >
                           {task.title}
                         </p>
-                        <p className="mt-1 text-xs font-medium text-slate-400">
+                        <p className="mt-1 text-xs font-medium text-slate-400 dark:text-slate-500">
                           {task.meta}
                         </p>
                       </div>
@@ -469,7 +474,7 @@ export default function WorkspacePage() {
                         type="button"
                         suppressHydrationWarning
                         onClick={() => void deleteTask(task.id)}
-                        className="text-slate-400 hover:text-red-500"
+                        className="text-slate-400 hover:text-red-500 dark:text-slate-500"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -477,14 +482,14 @@ export default function WorkspacePage() {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-slate-100 p-3">
+                <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-slate-100 p-3 dark:border-slate-700">
                   <input
                     type="text"
                     suppressHydrationWarning
                     value={taskDraft}
                     onChange={(event) => setTaskDraft(event.target.value)}
                     placeholder="Add task for current workspace"
-                    className="h-10 rounded-lg border border-orange-200 bg-orange-50/20 px-3 text-sm font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-400/20"
+                    className="h-10 rounded-lg border border-orange-200 bg-orange-50/20 px-3 text-sm font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-400/20 dark:border-orange-800/70 dark:bg-orange-950/30 dark:text-slate-100 dark:placeholder:text-slate-500"
                   />
                   <Button
                     onClick={() => void addTask()}
@@ -500,23 +505,23 @@ export default function WorkspacePage() {
                 </div>
               </article>
 
-              <article className="rounded-2xl border border-orange-100 bg-[#fff8f3] p-4">
+              <article className="rounded-2xl border border-orange-100 bg-[#fff8f3] p-4 dark:border-orange-900/60 dark:bg-orange-950/25">
                 <div className="flex items-start justify-between">
-                  <h3 className="text-[24px] font-black leading-tight tracking-tight text-slate-900">
+                  <h3 className="text-[24px] font-black leading-tight tracking-tight text-slate-900 dark:text-slate-100">
                     Quick Notes
                   </h3>
-                  <span className="rounded-md bg-orange-100 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-orange-700">
+                  <span className="rounded-md bg-orange-100 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-orange-700 dark:bg-orange-900/50 dark:text-orange-200">
                     {payload.quickNote
                       ? `Updated ${payload.quickNote.updatedAt}`
                       : "No notes yet"}
                   </span>
                 </div>
-                <blockquote className="mt-4 rounded-xl border border-slate-100 bg-white px-3 py-3 text-sm italic leading-7 text-slate-600">
+                <blockquote className="mt-4 rounded-xl border border-slate-100 bg-white px-3 py-3 text-sm italic leading-7 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                   {payload.quickNote
                     ? payload.quickNote.content
                     : "Capture your first strategic note to share context with your team."}
                 </blockquote>
-                <p className="mt-3 text-xs font-medium text-slate-400">
+                <p className="mt-3 text-xs font-medium text-slate-400 dark:text-slate-500">
                   {payload.quickNote
                     ? payload.quickNote.title
                     : "Shared notes appear here"}
@@ -527,36 +532,36 @@ export default function WorkspacePage() {
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <h4 className="text-2xl font-black tracking-tight text-slate-900">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+            <h4 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
               Workspace Stats
             </h4>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   Total Ideas
                 </p>
-                <p className="mt-1 text-[34px] font-black leading-none text-slate-900">
+                <p className="mt-1 text-[34px] font-black leading-none text-slate-900 dark:text-slate-100">
                   {payload.stats.totalIdeas}
                 </p>
               </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   Validated
                 </p>
-                <p className="mt-1 text-[34px] font-black leading-none text-slate-900">
+                <p className="mt-1 text-[34px] font-black leading-none text-slate-900 dark:text-slate-100">
                   {String(payload.stats.validated).padStart(2, "0")}
                 </p>
               </div>
             </div>
 
             <div className="mt-5">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
                 Most Promising Idea
               </p>
               <div className="mt-2 h-24 rounded-2xl bg-[radial-gradient(circle_at_50%_40%,rgba(56,189,248,0.42),rgba(2,6,23,0.95)_45%),linear-gradient(120deg,#0f172a,#075985)]" />
-              <h5 className="mt-2 text-sm font-black text-slate-900">
+              <h5 className="mt-2 text-sm font-black text-slate-900 dark:text-slate-100">
                 {payload.mostPromising?.title ?? "No analyzed ideas yet"}
               </h5>
               <p className="text-xs font-medium text-amber-500">
@@ -567,12 +572,12 @@ export default function WorkspacePage() {
             </div>
 
             <div className="mt-5">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
                 Recent Activity
               </p>
               <ul className="mt-2 space-y-3">
                 {payload.activity.length === 0 && (
-                  <li className="text-sm font-medium text-slate-500">
+                  <li className="text-sm font-medium text-slate-500 dark:text-slate-400">
                     No activity yet.
                   </li>
                 )}
@@ -587,7 +592,7 @@ export default function WorkspacePage() {
                       <p className="text-sm font-medium leading-5 text-slate-700">
                         {item.text}
                       </p>
-                      <p className="mt-0.5 text-xs text-slate-400">
+                      <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
                         {item.time}
                       </p>
                     </div>
@@ -599,7 +604,7 @@ export default function WorkspacePage() {
             <Button
               variant="outline"
               onClick={() => router.push("/dashboard/market-analysis")}
-              className="mt-5 h-10 w-full rounded-xl border-orange-200 bg-orange-50 text-[#ea580c] hover:bg-orange-100"
+              className="mt-5 h-10 w-full rounded-xl border-orange-200 bg-orange-50 text-[#ea580c] hover:bg-orange-100 dark:border-orange-800/70 dark:bg-orange-950/35 dark:text-orange-200 dark:hover:bg-orange-900/45"
             >
               <Sparkles className="mr-2 h-4 w-4" /> Quick Insights
             </Button>
