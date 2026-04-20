@@ -47,6 +47,46 @@ const normalizeRangeDays = (value: string | null) => {
   return 90;
 };
 
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
+const KEYWORD_STOPWORDS = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "this",
+  "that",
+  "from",
+  "into",
+  "your",
+  "their",
+  "have",
+  "will",
+  "would",
+  "could",
+  "should",
+  "about",
+  "using",
+  "based",
+  "solution",
+  "product",
+  "platform",
+]);
+
+const extractProblemKeywords = (text: string): string[] => {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter(
+      (word) =>
+        word.length > 3 &&
+        !KEYWORD_STOPWORDS.has(word) &&
+        !/^\d+$/.test(word),
+    );
+};
+
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -81,6 +121,85 @@ export async function GET(req: Request) {
             orderBy: { createdAt: "desc" },
           });
 
+    const analyzedIdeas = allIdeas.filter(
+      (idea) =>
+        idea.overallViability !== null ||
+        idea.innovationScore !== null ||
+        idea.marketDemand !== null,
+    );
+
+    const totalIdeas = analyzedIdeas.length;
+
+    const scoredIdeas = analyzedIdeas.map((idea) => {
+      const novelty = clamp01((idea.innovationScore ?? 0) / 100);
+      const marketPain = clamp01((idea.marketDemand ?? 0) / 100);
+      const opportunity = 0.6 * novelty + 0.4 * marketPain;
+
+      return {
+        novelty,
+        marketPain,
+        opportunity,
+      };
+    });
+
+    const avgNovelty =
+      totalIdeas > 0
+        ? Number(
+            (
+              scoredIdeas.reduce((sum, idea) => sum + idea.novelty, 0) /
+              totalIdeas
+            ).toFixed(6),
+          )
+        : 0;
+
+    const avgMarketPain =
+      totalIdeas > 0
+        ? Number(
+            (
+              scoredIdeas.reduce((sum, idea) => sum + idea.marketPain, 0) /
+              totalIdeas
+            ).toFixed(6),
+          )
+        : 0;
+
+    const avgOpportunity =
+      totalIdeas > 0
+        ? Number(
+            (
+              scoredIdeas.reduce((sum, idea) => sum + idea.opportunity, 0) /
+              totalIdeas
+            ).toFixed(6),
+          )
+        : 0;
+
+    const distribution = scoredIdeas.reduce(
+      (acc, idea) => {
+        if (idea.opportunity > 0.75) {
+          acc.high += 1;
+        } else if (idea.opportunity >= 0.5) {
+          acc.promising += 1;
+        } else {
+          acc.low += 1;
+        }
+        return acc;
+      },
+      { high: 0, promising: 0, low: 0 },
+    );
+
+    const keywordFrequency = new Map<string, number>();
+
+    for (const idea of analyzedIdeas) {
+      const keywords = extractProblemKeywords(idea.description);
+      for (const keyword of keywords) {
+        keywordFrequency.set(keyword, (keywordFrequency.get(keyword) ?? 0) + 1);
+      }
+    }
+
+    const topKeywords = [...keywordFrequency.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([keyword]) => keyword);
+
     const [userDatasets, notes, tasks] = await Promise.all([
       prisma.userDataset.findMany({
         where: {
@@ -107,7 +226,7 @@ export async function GET(req: Request) {
       }),
     ]);
 
-    const ideasAnalyzed = allIdeas.length;
+    const ideasAnalyzed = analyzedIdeas.length;
     const marketOpps = allIdeas.filter(
       (idea) => (idea.overallViability ?? 0) >= 70,
     ).length;
@@ -127,10 +246,6 @@ export async function GET(req: Request) {
     for (const idea of allIdeas) {
       const bucket = getOpportunityBucket(idea.overallViability ?? 50);
       mixCounter[bucket] += 1;
-    }
-
-    if (ideasAnalyzed === 0) {
-      mixCounter.Promising = 1;
     }
 
     const opportunityMix = Object.entries(mixCounter).map(([name, value]) => ({
@@ -222,29 +337,6 @@ export async function GET(req: Request) {
       .sort((a, b) => b.growth - a.growth)
       .slice(0, 3);
 
-    if (marketTrends.length === 0) {
-      marketTrends.push(
-        {
-          id: "default-tech",
-          category: "TECH",
-          label: "Edge AI automation",
-          growth: 82,
-          sample: 14,
-          tag: "Hot",
-          color: "#ea580c",
-        },
-        {
-          id: "default-health",
-          category: "HEALTH",
-          label: "Digital care assistant",
-          growth: 67,
-          sample: 9,
-          tag: "Trending",
-          color: "#06b6d4",
-        },
-      );
-    }
-
     const quickInsight =
       marketTrends[0]?.label && marketTrends[0]?.growth
         ? `${marketTrends[0].label} shows ${marketTrends[0].growth}% demand momentum in your current idea portfolio.`
@@ -252,6 +344,12 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       rangeDays,
+      avg_novelty: avgNovelty,
+      avg_market_pain: avgMarketPain,
+      avg_opportunity: avgOpportunity,
+      total_ideas: totalIdeas,
+      top_keywords: topKeywords,
+      distribution,
       stats: {
         ideasAnalyzed,
         marketOpps,

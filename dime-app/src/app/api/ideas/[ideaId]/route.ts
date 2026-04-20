@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "../../../../../auth";
 import { prisma } from "../../../../../lib/prisma";
+import { getSimilarity } from "@/lib/analysis/similarity";
 
 type RouteContext = {
   params: Promise<{
@@ -37,7 +38,18 @@ export async function GET(_req: Request, context: RouteContext) {
       return new NextResponse("Idea not found", { status: 404 });
     }
 
-    return NextResponse.json(idea);
+    const similarity = getSimilarity(idea.description);
+
+    return NextResponse.json({
+      ...idea,
+      novelty_score: similarity.novelty_score,
+      max_similarity: similarity.max_similarity,
+      similar_projects: similarity.similar_projects.map((project) => ({
+        Name: "Related GitHub Project",
+        Description: project.description,
+        "Similarity Score": project.score,
+      })),
+    });
   } catch (error: unknown) {
     console.error("IDEA_FETCH_ERROR", error);
     return new NextResponse("Internal Error", { status: 500 });

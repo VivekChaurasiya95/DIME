@@ -2,8 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "../../../../../auth";
 import { prisma } from "../../../../../lib/prisma";
 import { analyzeIdeaPayload } from "@/lib/idea-analysis";
+import { getSimilarity } from "@/lib/analysis/similarity";
+import { getSentimentInsights } from "@/lib/analysis/sentiment";
 
 export async function POST(req: Request) {
+  const startTime = Date.now();
+  console.log("API START");
+
   try {
     const session = await auth();
 
@@ -54,6 +59,17 @@ export async function POST(req: Request) {
       industry,
     });
 
+    console.log("Before similarity:", Date.now() - startTime);
+    const similarity = getSimilarity(description);
+    console.log("After similarity:", Date.now() - startTime);
+
+    const sentiment = getSentimentInsights();
+    const opportunityScore = Number(
+      (similarity.novelty_score * 0.6 + sentiment.negative_ratio * 0.4).toFixed(
+        6,
+      ),
+    );
+
     const updated = await prisma.idea.update({
       where: { id: created.id },
       data: {
@@ -70,7 +86,18 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(updated);
+    console.log("API END:", Date.now() - startTime);
+    return NextResponse.json({
+      input_idea: description,
+      novelty_score: similarity.novelty_score,
+      market_pain: sentiment.negative_ratio,
+      opportunity_score: opportunityScore,
+      max_similarity: similarity.max_similarity,
+      similar_projects: similarity.similar_projects,
+      key_problem_areas: sentiment.top_keywords,
+      ...analysis,
+      ...updated,
+    });
   } catch (error: unknown) {
     console.error("IDEA_START_ANALYSIS_ERROR", error);
     return new NextResponse("Internal Error", { status: 500 });

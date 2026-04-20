@@ -26,6 +26,16 @@ import {
 
 type DashboardOverview = {
   rangeDays: number;
+  avg_novelty: number;
+  avg_market_pain: number;
+  avg_opportunity: number;
+  total_ideas: number;
+  top_keywords: string[];
+  distribution: {
+    high: number;
+    promising: number;
+    low: number;
+  };
   stats: {
     ideasAnalyzed: number;
     marketOpps: number;
@@ -66,60 +76,11 @@ const getRangeLabel = (value: string | null) =>
   rangeOptions.find((option) => option.value === value)?.label ??
   "Select range";
 
-const stopWords = new Set([
-  "and",
-  "the",
-  "for",
-  "with",
-  "from",
-  "your",
-  "landscape",
-  "opportunity",
-  "shows",
-  "ideas",
-  "demand",
-]);
-
-const getTopKeywords = (labels: string[]) => {
-  const counts = new Map<string, number>();
-
-  for (const label of labels) {
-    const tokens = label
-      .toLowerCase()
-      .replace(/[^a-z\s]/g, " ")
-      .split(/\s+/)
-      .filter((token) => token.length >= 4 && !stopWords.has(token));
-
-    for (const token of tokens) {
-      counts.set(token, (counts.get(token) ?? 0) + 1);
-    }
-  }
-
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(([keyword]) => keyword);
-};
-
-const defaultOverview: DashboardOverview = {
-  rangeDays: 7,
-  stats: {
-    ideasAnalyzed: 0,
-    marketOpps: 0,
-    datasetInsights: 0,
-    savedProjects: 0,
-  },
-  opportunityMix: [
-    {
-      name: "Promising",
-      value: 1,
-      color: "#8b5cf6",
-    },
-  ],
-  recentActivity: [],
-  marketTrends: [],
-  quickInsight: "Add your first idea analysis to unlock personalized insights.",
-};
+const mixColors = {
+  high: "#ea580c",
+  promising: "#8b5cf6",
+  low: "#06b6d4",
+} as const;
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -141,7 +102,7 @@ const itemVariants = {
 export default function DashboardPage() {
   const router = useRouter();
   const [selectedRange, setSelectedRange] = useState("7");
-  const [overview, setOverview] = useState<DashboardOverview>(defaultOverview);
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -168,6 +129,7 @@ export default function DashboardPage() {
             ? error.message
             : "Could not load dashboard overview",
         );
+        setOverview(null);
       } finally {
         setIsLoading(false);
       }
@@ -176,45 +138,38 @@ export default function DashboardPage() {
     loadDashboard();
   }, [selectedRange]);
 
+  const opportunityMix = useMemo(() => {
+    if (!overview) {
+      return [] as Array<{ name: string; value: number; color: string }>;
+    }
+
+    return [
+      {
+        name: "High Potential",
+        value: overview.distribution.high,
+        color: mixColors.high,
+      },
+      {
+        name: "Promising",
+        value: overview.distribution.promising,
+        color: mixColors.promising,
+      },
+      {
+        name: "Needs Validation",
+        value: overview.distribution.low,
+        color: mixColors.low,
+      },
+    ];
+  }, [overview]);
+
   const totalMix = useMemo(
-    () => overview.opportunityMix.reduce((sum, item) => sum + item.value, 0),
-    [overview.opportunityMix],
+    () => opportunityMix.reduce((sum, item) => sum + item.value, 0),
+    [opportunityMix],
   );
 
-  const averageNoveltyScore = useMemo(() => {
-    const analyzed = overview.stats.ideasAnalyzed;
-
-    if (analyzed === 0) {
-      return 0.64;
-    }
-
-    const validatedRatio = overview.stats.marketOpps / Math.max(1, analyzed);
-    return Number((0.54 + validatedRatio * 0.34).toFixed(2));
-  }, [overview.stats.ideasAnalyzed, overview.stats.marketOpps]);
-
-  const averageMarketPain = useMemo(() => {
-    const analyzed = overview.stats.ideasAnalyzed;
-
-    if (analyzed === 0) {
-      return 0.59;
-    }
-
-    const signalDensity =
-      overview.stats.datasetInsights / Math.max(1, analyzed);
-    return Number(Math.min(0.92, 0.48 + signalDensity * 0.22).toFixed(2));
-  }, [overview.stats.datasetInsights, overview.stats.ideasAnalyzed]);
-
-  const topProblemKeywords = useMemo(() => {
-    const keywords = getTopKeywords(
-      overview.marketTrends.map((trend) => `${trend.label} ${trend.category}`),
-    );
-
-    if (keywords.length > 0) {
-      return keywords;
-    }
-
-    return ["onboarding", "pricing", "retention", "latency"];
-  }, [overview.marketTrends]);
+  const averageNoveltyScore = overview?.avg_novelty ?? 0;
+  const averageMarketPain = overview?.avg_market_pain ?? 0;
+  const topProblemKeywords = overview?.top_keywords ?? [];
 
   const activityIcon = (
     type: DashboardOverview["recentActivity"][number]["type"],
@@ -350,6 +305,11 @@ export default function DashboardPage() {
                       {keyword}
                     </span>
                   ))}
+                  {!isLoading && topProblemKeywords.length === 0 && (
+                    <span className="text-xs font-medium text-slate-500">
+                      No keywords yet
+                    </span>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -369,7 +329,7 @@ export default function DashboardPage() {
                   Ideas Analyzed
                 </p>
                 <p className="mt-2 text-3xl font-bold text-slate-900">
-                  {isLoading ? "--" : overview.stats.ideasAnalyzed}
+                  {isLoading ? "--" : (overview?.total_ideas ?? 0)}
                 </p>
                 <p className="mt-1 text-xs font-medium text-slate-500">
                   Total analyses across selected date range
@@ -408,7 +368,7 @@ export default function DashboardPage() {
                   <div className="h-[280px] w-full flex items-center justify-center">
                     <PieChart width={280} height={280}>
                       <Pie
-                        data={overview.opportunityMix}
+                        data={opportunityMix}
                         cx="50%"
                         cy="50%"
                         innerRadius={72}
@@ -417,7 +377,7 @@ export default function DashboardPage() {
                         stroke="none"
                         paddingAngle={4}
                       >
-                        {overview.opportunityMix.map((entry) => (
+                        {opportunityMix.map((entry) => (
                           <Cell key={entry.name} fill={entry.color} />
                         ))}
                       </Pie>
@@ -436,7 +396,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="space-y-3">
-                    {overview.opportunityMix.map((item) => {
+                    {opportunityMix.map((item) => {
                       const percentage =
                         totalMix > 0
                           ? Math.round((item.value / totalMix) * 100)
@@ -479,6 +439,12 @@ export default function DashboardPage() {
                       );
                     })}
 
+                    {!isLoading && opportunityMix.every((item) => item.value === 0) && (
+                      <p className="text-sm font-medium text-slate-500">
+                        No analyzed ideas available yet.
+                      </p>
+                    )}
+
                     {isLoading && (
                       <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-500">
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -501,13 +467,13 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="flex-1 flex flex-col">
                 <div className="space-y-6 flex-1">
-                  {overview.recentActivity.length === 0 ? (
+                  {(overview?.recentActivity ?? []).length === 0 ? (
                     <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm font-medium text-slate-500">
                       No recent activity yet. Start a new analysis to populate
                       your timeline.
                     </div>
                   ) : (
-                    overview.recentActivity.map((activity) => {
+                    (overview?.recentActivity ?? []).map((activity) => {
                       const iconConfig = activityIcon(activity.type);
                       const Icon = iconConfig.icon;
 
@@ -562,7 +528,7 @@ export default function DashboardPage() {
           Market Trends
         </h3>
 
-        {overview.marketTrends.map((trend) => (
+        {(overview?.marketTrends ?? []).map((trend) => (
           <motion.div
             key={trend.id}
             whileHover={{ scale: 1.02 }}
@@ -625,7 +591,7 @@ export default function DashboardPage() {
                 PRO TIP
               </span>
               <p className="font-semibold text-lg leading-snug mb-5">
-                {overview.quickInsight}
+                {overview?.quickInsight ?? "No insights available yet."}
               </p>
               <button
                 type="button"

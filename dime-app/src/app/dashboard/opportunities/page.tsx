@@ -45,6 +45,14 @@ type OpportunityResponse = {
   industries: string[];
   statuses: string[];
   items: OpportunityItem[];
+  computed?: Array<{
+    id: string;
+    title: string;
+    feasibility_score: number;
+    opportunity_score: number;
+    novelty_score: number;
+    market_pain: number;
+  }>;
   comparison: Array<{
     id: string;
     name: string;
@@ -75,45 +83,9 @@ const fallback: OpportunityResponse = {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-const parseDemandFromDrivers = (drivers: OpportunityDriver[]) => {
-  const marketDriver = drivers.find(
-    (driver) => driver.type === "Market Readiness",
-  );
-  const match = marketDriver?.text.match(/(\d+)%/);
-  return match ? Number(match[1]) : 55;
-};
-
-const complexityAdjustment: Record<string, number> = {
-  low: 10,
-  medium: 0,
-  high: -12,
-};
-
-const teamSizeAdjustment: Record<string, number> = {
-  solo: -8,
-  small: 2,
-  medium: 8,
-  startup: 12,
-};
-
-const complexityLabels: Record<string, string> = {
-  low: "Low Complexity",
-  medium: "Medium Complexity",
-  high: "High Complexity",
-};
-
-const teamSizeLabels: Record<string, string> = {
-  solo: "Solo Team",
-  small: "Small Team (2-5)",
-  medium: "Medium Team (6-15)",
-  startup: "Startup Team (15+)",
-};
-
 export default function OpportunityMatrixPage() {
   const [industry, setIndustry] = useState("all");
   const [status, setStatus] = useState("all");
-  const [complexity, setComplexity] = useState("medium");
-  const [teamSize, setTeamSize] = useState("small");
   const [data, setData] = useState<OpportunityResponse>(fallback);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -139,7 +111,7 @@ export default function OpportunityMatrixPage() {
 
       const payload = (await response.json()) as OpportunityResponse;
       setData(payload);
-      setSelectedId((prev) => prev ?? payload.items[0]?.id ?? null);
+      setSelectedId((prev) => prev ?? payload.computed?.[0]?.id ?? null);
     } catch (error: unknown) {
       setErrorMessage(
         error instanceof Error
@@ -156,55 +128,25 @@ export default function OpportunityMatrixPage() {
   }, [loadData]);
 
   const matrixPoints = useMemo(() => {
-    const basePoints = data.items.map((item) => {
-      const novelty = clamp(Math.round(item.radius * 2), 0, 100);
-      const marketPain = clamp(parseDemandFromDrivers(item.drivers), 0, 100);
-      const opportunityScore = Math.round(novelty * 0.6 + marketPain * 0.4);
-      const feasibility = clamp(
-        Math.round(
-          item.x +
-            complexityAdjustment[complexity] +
-            teamSizeAdjustment[teamSize],
-        ),
-        0,
-        100,
-      );
+    const basePoints = (data.computed ?? []).map((computedPoint) => {
+      const sourceItem = data.items.find((item) => item.id === computedPoint.id);
 
       return {
-        id: item.id,
-        name: item.name,
-        feasibility,
-        opportunityScore,
-        novelty,
-        marketPain,
-        color: item.color,
-        excerpt: item.excerpt,
+        id: computedPoint.id,
+        name: computedPoint.title,
+        feasibility: clamp(Math.round(computedPoint.feasibility_score), 0, 100),
+        opportunityScore: clamp(computedPoint.opportunity_score, 0, 1),
+        novelty: clamp(computedPoint.novelty_score, 0, 1),
+        marketPain: clamp(computedPoint.market_pain, 0, 1),
+        color: sourceItem?.color ?? "#ea580c",
+        excerpt:
+          sourceItem?.excerpt ??
+          "No additional excerpt available for this analyzed idea.",
       };
     });
 
-    if (basePoints.length > 0) {
-      return basePoints;
-    }
-
-    const sampleFeasibility = clamp(
-      58 + complexityAdjustment[complexity] + teamSizeAdjustment[teamSize],
-      0,
-      100,
-    );
-
-    return [
-      {
-        id: "sample-point",
-        name: "Sample Idea",
-        feasibility: sampleFeasibility,
-        opportunityScore: 64,
-        novelty: 66,
-        marketPain: 61,
-        color: "#ea580c",
-        excerpt: "Add a real idea analysis to replace this sample point.",
-      },
-    ];
-  }, [complexity, data.items, teamSize]);
+    return basePoints;
+  }, [data.computed, data.items]);
 
   const selectedPoint: MatrixPoint | null = useMemo(() => {
     return (
@@ -219,8 +161,6 @@ export default function OpportunityMatrixPage() {
       {
         industry,
         status,
-        complexity,
-        teamSize,
         points: matrixPoints,
         formula: "opportunity_score = 0.6 * novelty + 0.4 * market_pain",
       },
@@ -280,39 +220,6 @@ export default function OpportunityMatrixPage() {
                   {item === "all" ? "All Statuses" : item.toUpperCase()}
                 </SelectItem>
               ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={complexity} onValueChange={setComplexity}>
-            <SelectTrigger className="h-10 w-[180px] rounded-lg border-slate-200 bg-white text-sm font-semibold text-slate-700">
-              <SelectValue placeholder="Complexity">
-                {(value: string | null) =>
-                  value
-                    ? (complexityLabels[value] ?? "Complexity")
-                    : "Complexity"
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Low Complexity</SelectItem>
-              <SelectItem value="medium">Medium Complexity</SelectItem>
-              <SelectItem value="high">High Complexity</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={teamSize} onValueChange={setTeamSize}>
-            <SelectTrigger className="h-10 w-[180px] rounded-lg border-slate-200 bg-white text-sm font-semibold text-slate-700">
-              <SelectValue placeholder="Team Size">
-                {(value: string | null) =>
-                  value ? (teamSizeLabels[value] ?? "Team Size") : "Team Size"
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="solo">Solo Team</SelectItem>
-              <SelectItem value="small">Small Team (2-5)</SelectItem>
-              <SelectItem value="medium">Medium Team (6-15)</SelectItem>
-              <SelectItem value="startup">Startup Team (15+)</SelectItem>
             </SelectContent>
           </Select>
 
@@ -376,12 +283,19 @@ export default function OpportunityMatrixPage() {
                   <YAxis
                     type="number"
                     dataKey="opportunityScore"
-                    domain={[0, 100]}
+                    domain={[0, 1]}
                     tick={{ fill: "#64748b", fontSize: 11 }}
+                    tickFormatter={(value: number) => value.toFixed(2)}
                   />
                   <Tooltip
                     cursor={{ strokeDasharray: "4 4" }}
-                    formatter={(value: number, name: string) => [value, name]}
+                    formatter={(value: number, name: string) => {
+                      if (name === "opportunityScore") {
+                        return [value.toFixed(2), "opportunityScore"];
+                      }
+
+                      return [value, name];
+                    }}
                   />
                   <Scatter
                     data={matrixPoints}
@@ -464,13 +378,13 @@ export default function OpportunityMatrixPage() {
                 <div className="rounded-lg bg-slate-50 p-2">
                   <p className="text-xs text-slate-500">Novelty</p>
                   <p className="font-semibold text-slate-900">
-                    {selectedPoint.novelty}
+                    {selectedPoint.novelty.toFixed(2)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-2">
                   <p className="text-xs text-slate-500">Market Pain</p>
                   <p className="font-semibold text-slate-900">
-                    {selectedPoint.marketPain}
+                    {selectedPoint.marketPain.toFixed(2)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-2">
@@ -482,7 +396,7 @@ export default function OpportunityMatrixPage() {
                 <div className="rounded-lg bg-orange-50 p-2">
                   <p className="text-xs text-[#c2410c]">Opportunity Score</p>
                   <p className="font-semibold text-[#c2410c]">
-                    {selectedPoint.opportunityScore}
+                    {selectedPoint.opportunityScore.toFixed(2)}
                   </p>
                 </div>
               </div>

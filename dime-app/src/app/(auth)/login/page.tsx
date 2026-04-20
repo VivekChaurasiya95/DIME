@@ -100,7 +100,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        console.error("NEXTAUTH_FIREBASE_SIGNIN_ERROR", result.error);
+        console.warn("NEXTAUTH_FIREBASE_SIGNIN_ERROR", result.error);
         setError(getGoogleServerErrorMessage(result.error));
         return;
       }
@@ -112,7 +112,17 @@ export default function LoginPage() {
 
       router.replace("/dashboard");
     } catch (error: unknown) {
-      console.error("FIREBASE_GOOGLE_CLIENT_ERROR", error);
+      const errorCode =
+        typeof error === "object" && error !== null && "code" in error
+          ? String((error as { code?: string }).code ?? "")
+          : "";
+
+      if (errorCode === "auth/popup-closed-by-user") {
+        setError("");
+        return;
+      }
+
+      console.warn("FIREBASE_GOOGLE_CLIENT_ERROR", error);
       setError(getGoogleClientErrorMessage(error));
     } finally {
       setGoogleLoading(false);
