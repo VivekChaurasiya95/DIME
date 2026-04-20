@@ -1,12 +1,25 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/server-auth";
+import { getSentimentInsights } from "@/lib/analysis/sentiment";
 
-type SentimentStatus = "positive" | "neutral" | "negative";
+type MarketIssue = {
+  issue: string;
+  mentions: number;
+  share_percent: number;
+  primary_sources: string[];
+};
 
-type TrendPoint = {
-  label: string;
-  date: Date;
+type SourceDistribution = {
+  source: string;
+  reviews: number;
+  share_percent: number;
+};
+
+type FeedbackVolumePoint = {
+  month: string;
+  total_reviews: number;
+  negative_reviews: number;
 };
 
 const normalizeRangeDays = (rawValue: string | null) => {
@@ -27,48 +40,79 @@ const normalizeRangeDays = (rawValue: string | null) => {
   return 365;
 };
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
-const round = (value: number) => Math.round(value * 10) / 10;
-
-const toMonthLabel = (date: Date) =>
-  date.toLocaleDateString("en-US", { month: "short" });
-
-const toSentimentStatus = (status: string): SentimentStatus => {
-  if (status === "VALIDATED" || status === "SAVED") {
-    return "positive";
+const inferIdeaDomain = (industries: string[]): string => {
+  if (industries.length === 0) {
+    return "unclassified";
   }
 
-  if (status === "REJECTED") {
-    return "negative";
+  const frequency = new Map<string, number>();
+
+  for (const industry of industries) {
+    const key = industry.trim().toLowerCase();
+    if (!key) {
+      continue;
+    }
+
+    frequency.set(key, (frequency.get(key) ?? 0) + 1);
   }
 
-  return "neutral";
+  const top = [...frequency.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  return top ?? "unclassified";
 };
 
-const buildTrendPoints = (rangeDays: number): TrendPoint[] => {
+const datasetMatchesIdeaDomain = (ideaDomain: string, datasetDomain: string) => {
+  const idea = ideaDomain.toLowerCase();
+  const dataset = datasetDomain.toLowerCase();
+
+  const mobileSignals = ["app", "consumer", "social", "transport", "ride"];
+  const ideaLooksMobile = mobileSignals.some((signal) => idea.includes(signal));
+  const datasetLooksMobile = dataset.includes("mobile") || dataset.includes("app");
+
+  if (ideaLooksMobile && datasetLooksMobile) {
+    return true;
+  }
+
+  return idea === dataset;
+};
+
+const filterTimelineByRange = (
+  timeline: FeedbackVolumePoint[],
+  rangeDays: number,
+): FeedbackVolumePoint[] => {
+  if (timeline.length === 0) {
+    return [];
+  }
+
   const months = rangeDays >= 365 ? 12 : rangeDays >= 90 ? 6 : 3;
-  const now = new Date();
-  const points: TrendPoint[] = [];
-
-  for (let i = months - 1; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    points.push({
-      label: toMonthLabel(date),
-      date,
-    });
-  }
-
-  return points;
+  return timeline.slice(-months);
 };
 
-const percentChange = (startValue: number, endValue: number) => {
-  if (startValue <= 0) {
-    return endValue > 0 ? 100 : 0;
+const buildInsightSummary = (params: {
+  isDomainAligned: boolean;
+  ideaDomain: string;
+  datasetDomain: string;
+  topIssues: MarketIssue[];
+  negativePercent: number;
+}): string => {
+  const { isDomainAligned, ideaDomain, datasetDomain, topIssues, negativePercent } =
+    params;
+
+  if (!isDomainAligned) {
+    return `Current dataset reflects ${datasetDomain} and may not fully represent your idea domain (${ideaDomain}). Use this as directional market context, not direct validation.`;
   }
 
-  return round(((endValue - startValue) / startValue) * 100);
+  const issueLead = topIssues
+    .slice(0, 2)
+    .map((issue) => `${issue.issue} (${issue.mentions} mentions)`)
+    .join(" and ");
+
+  if (issueLead) {
+    return `${issueLead} are the most repeated complaints in this domain dataset, with ${negativePercent.toFixed(1)}% negative feedback overall.`;
+  }
+
+  return `Dataset feedback is currently ${negativePercent.toFixed(1)}% negative, but no recurring issue cluster was strong enough to rank in the top set.`;
 };
 
 export async function GET(req: Request) {
@@ -102,18 +146,6 @@ export async function GET(req: Request) {
             orderBy: { createdAt: "asc" },
           });
 
-    const notes = await prisma.note.findMany({
-      where: { userId: session.user.id },
-      orderBy: { updatedAt: "desc" },
-      take: 200,
-    });
-
-    const tasks = await prisma.workspaceTask.findMany({
-      where: { userId: session.user.id },
-      orderBy: { updatedAt: "desc" },
-      take: 200,
-    });
-
     const ideas =
       industryFilter !== "all"
         ? ideasAll.filter(
@@ -122,261 +154,6 @@ export async function GET(req: Request) {
           )
         : ideasAll;
 
-    const trendPoints = buildTrendPoints(rangeDays);
-
-    const demandTrend = trendPoints.map((point, index) => {
-      const monthIdeas = ideas.filter(
-        (idea) =>
-          idea.createdAt.getFullYear() === point.date.getFullYear() &&
-          idea.createdAt.getMonth() === point.date.getMonth(),
-      );
-
-      if (monthIdeas.length === 0) {
-        return {
-          month: point.label,
-          value: 40 + index * (rangeDays >= 365 ? 7 : 5),
-        };
-      }
-
-      const avgDemand =
-        monthIdeas.reduce((sum, idea) => sum + (idea.marketDemand ?? 55), 0) /
-        monthIdeas.length;
-
-      return {
-        month: point.label,
-        value: Math.round(clamp(avgDemand + monthIdeas.length * 3, 18, 130)),
-      };
-    });
-
-    const industryMap = new Map<
-      string,
-      { count: number; totalCompetition: number; avgViability: number }
-    >();
-
-    for (const idea of ideas) {
-      const key = idea.industry || "General";
-      const current = industryMap.get(key) ?? {
-        count: 0,
-        totalCompetition: 0,
-        avgViability: 0,
-      };
-
-      current.count += 1;
-      current.totalCompetition += idea.competitionLevel ?? 45;
-      current.avgViability += idea.overallViability ?? 50;
-
-      industryMap.set(key, current);
-    }
-
-    const sectorCompetition =
-      industryMap.size > 0
-        ? [...industryMap.entries()]
-            .map(([sector, metrics], index) => {
-              const palette = [
-                "#ea580c",
-                "#f59e0b",
-                "#14b8a6",
-                "#8b5cf6",
-                "#38bdf8",
-              ];
-              return {
-                sector,
-                value: Math.round(metrics.totalCompetition / metrics.count),
-                color: palette[index % palette.length],
-              };
-            })
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5)
-        : [
-            { sector: "AI", value: 58, color: "#ea580c" },
-            { sector: "SaaS", value: 48, color: "#f59e0b" },
-            { sector: "Data", value: 42, color: "#14b8a6" },
-          ];
-
-    const sentimentCounter = {
-      positive: 0,
-      neutral: 0,
-      negative: 0,
-    };
-
-    for (const idea of ideas) {
-      sentimentCounter[toSentimentStatus(idea.status)] += 1;
-    }
-
-    const sentimentTotal = Math.max(
-      1,
-      sentimentCounter.positive +
-        sentimentCounter.neutral +
-        sentimentCounter.negative,
-    );
-
-    const sentimentBreakdown = [
-      {
-        name: "Positive",
-        value: Math.round((sentimentCounter.positive / sentimentTotal) * 100),
-        color: "#22c55e",
-      },
-      {
-        name: "Neutral",
-        value: Math.round((sentimentCounter.neutral / sentimentTotal) * 100),
-        color: "#f59e0b",
-      },
-      {
-        name: "Negative",
-        value: Math.round((sentimentCounter.negative / sentimentTotal) * 100),
-        color: "#ef4444",
-      },
-    ];
-
-    const emergingSignals = ideas
-      .slice()
-      .sort((a, b) => (b.overallViability ?? 0) - (a.overallViability ?? 0))
-      .slice(0, 3)
-      .map((idea, index) => {
-        const demand = idea.marketDemand ?? 50;
-        const competition = idea.competitionLevel ?? 50;
-        return {
-          id: idea.id,
-          title: idea.title,
-          impact: demand >= 70 ? "High" : demand >= 55 ? "Medium" : "Low",
-          growth: `+${Math.max(6, Math.round(demand / 3) + index)}% this quarter`,
-          risk:
-            competition >= 70 ? "High" : competition >= 50 ? "Moderate" : "Low",
-        };
-      });
-
-    const monthlySentiment = trendPoints.map((point) => {
-      const monthIdeas = ideas.filter(
-        (idea) =>
-          idea.createdAt.getFullYear() === point.date.getFullYear() &&
-          idea.createdAt.getMonth() === point.date.getMonth(),
-      );
-
-      if (monthIdeas.length === 0) {
-        return {
-          month: point.label,
-          positive: 50,
-          neutral: 34,
-          negative: 16,
-        };
-      }
-
-      const monthCounter = { positive: 0, neutral: 0, negative: 0 };
-
-      for (const idea of monthIdeas) {
-        monthCounter[toSentimentStatus(idea.status)] += 1;
-      }
-
-      const total = Math.max(
-        1,
-        monthCounter.positive + monthCounter.neutral + monthCounter.negative,
-      );
-
-      return {
-        month: point.label,
-        positive: Math.round((monthCounter.positive / total) * 100),
-        neutral: Math.round((monthCounter.neutral / total) * 100),
-        negative: Math.round((monthCounter.negative / total) * 100),
-      };
-    });
-
-    const complaintSeed = notes.length > 0 ? notes : [];
-    const userComplaintClusters = [
-      "Onboarding Friction",
-      "Pricing Transparency",
-      "Slow Dashboard Load",
-      "Workflow Confusion",
-      "Mobile UX Gaps",
-    ].map((cluster, index) => {
-      const noteMatch = complaintSeed.filter((note) =>
-        `${note.title} ${note.content}`
-          .toLowerCase()
-          .includes(cluster.split(" ")[0].toLowerCase()),
-      ).length;
-      const backlog = tasks.filter((task) => task.status !== "DONE").length;
-      const base = 45 + noteMatch * 18 + backlog * 2 + index * 4;
-      return {
-        cluster,
-        count: Math.round(clamp(base, 20, 120)),
-        severity: Math.round(clamp(base - 10 + index * 3, 18, 95)),
-      };
-    });
-
-    const featureRequestClusters = [
-      "Automation Rules",
-      "AI Co-Author",
-      "Integrations Hub",
-      "Role Permissions",
-      "Custom Reporting",
-    ].map((feature, index) => {
-      const viability =
-        ideas.length > 0
-          ? ideas.reduce(
-              (sum, idea) => sum + (idea.overallViability ?? 55),
-              0,
-            ) / ideas.length
-          : 60;
-      return {
-        feature,
-        requests: Math.round(clamp(70 + ideas.length * 5 + index * 6, 20, 180)),
-        feasibility: Math.round(clamp(viability - 5 + index * 2, 20, 96)),
-      };
-    });
-
-    const trendingMarketProblems = Array.from({ length: 8 }).map((_, index) => {
-      const rejectedIdeas = ideas.filter(
-        (idea) => idea.status === "REJECTED",
-      ).length;
-      const baseSignal = 30 + index * 5 + rejectedIdeas * 2;
-      return {
-        week: `W${index + 1}`,
-        signal: Math.round(clamp(baseSignal, 22, 95)),
-        urgency: Math.round(clamp(baseSignal + 6, 30, 99)),
-      };
-    });
-
-    const problemHighlights = ideas
-      .slice()
-      .sort((a, b) => (a.overallViability ?? 50) - (b.overallViability ?? 50))
-      .slice(0, 3)
-      .map((idea) => ({
-        id: idea.id,
-        title: idea.title,
-        growth: `+${Math.max(10, Math.round((idea.marketDemand ?? 45) / 3))}% discussion volume`,
-        impact: idea.targetAudience.toUpperCase(),
-      }));
-
-    const startValue = demandTrend[0]?.value ?? 0;
-    const endValue = demandTrend[demandTrend.length - 1]?.value ?? 0;
-    const demandMomentum = percentChange(startValue, endValue);
-
-    const saturationIndex =
-      sectorCompetition.length > 0
-        ? Math.round(
-            sectorCompetition.reduce((sum, item) => sum + item.value, 0) /
-              sectorCompetition.length,
-          )
-        : 50;
-
-    const opportunityScore =
-      ideas.length > 0
-        ? Math.round(
-            ideas.reduce(
-              (sum, idea) => sum + (idea.overallViability ?? 50),
-              0,
-            ) / ideas.length,
-          )
-        : 72;
-
-    const negativeShare =
-      sentimentBreakdown.find((item) => item.name === "Negative")?.value ?? 0;
-    const riskRadar =
-      negativeShare >= 35 || saturationIndex >= 75
-        ? "High"
-        : negativeShare >= 20 || saturationIndex >= 60
-          ? "Medium"
-          : "Low";
-
     const availableIndustries = [
       "all",
       ...Array.from(
@@ -384,28 +161,79 @@ export async function GET(req: Request) {
       ),
     ];
 
+    const sentiment = getSentimentInsights();
+    const filteredTimeline = filterTimelineByRange(
+      sentiment.review_volume_timeline,
+      rangeDays,
+    );
+
+    const negativePercent = sentiment.sentiment_distribution.negative;
+    const issueConcentration =
+      sentiment.top_issues.length > 0
+        ? sentiment.top_issues
+            .slice(0, 3)
+            .reduce((sum, issue) => sum + issue.share_percent, 0) /
+          Math.min(3, sentiment.top_issues.length)
+        : 0;
+
+    const marketPainScore = clamp01(
+      sentiment.negative_ratio * 0.7 + (issueConcentration / 100) * 0.3,
+    );
+
+    const ideaDomain = inferIdeaDomain(ideas.map((idea) => idea.industry));
+    const datasetDomain = sentiment.dataset_domain;
+    const isDomainAligned = datasetMatchesIdeaDomain(ideaDomain, datasetDomain);
+
+    const summary = buildInsightSummary({
+      isDomainAligned,
+      ideaDomain,
+      datasetDomain,
+      topIssues: sentiment.top_issues,
+      negativePercent,
+    });
+
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
       rangeDays,
       industry: industryFilter || "all",
       availableIndustries,
-      stats: {
-        demandMomentum,
-        saturationIndex,
-        opportunityScore,
-        riskRadar,
+      context_banner:
+        "This analysis reflects trends from existing datasets and may not fully represent new or emerging idea domains.",
+      sentiment_overview: {
+        total_reviews: sentiment.total_reviews,
+        sources: sentiment.sources,
+        positive_percent: sentiment.sentiment_distribution.positive,
+        neutral_percent: sentiment.sentiment_distribution.neutral,
+        negative_percent: sentiment.sentiment_distribution.negative,
+        explanation:
+          "This reflects sentiment of existing products in this domain, not your idea.",
       },
-      charts: {
-        demandTrend,
-        sectorCompetition,
-        sentimentBreakdown,
-        emergingSignals,
-        userSentimentAnalysis: monthlySentiment,
-        userComplaintClusters,
-        featureRequestClusters,
-        trendingMarketProblems,
-        problemHighlights,
+      top_reported_issues: sentiment.top_issues.map((item) => ({
+        category: item.issue,
+        count: item.mentions,
+        share_percent: item.share_percent,
+        primary_sources: item.primary_sources,
+      })),
+      review_volume_timeline: filteredTimeline,
+      source_distribution: sentiment.dataset_distribution,
+      market_pain_signal: {
+        score_0_to_1: Number(marketPainScore.toFixed(6)),
+        score_percent: Number((marketPainScore * 100).toFixed(2)),
+        explanation:
+          "Derived from frequency and intensity of negative user feedback.",
+        scale: {
+          low: "0-0.3",
+          moderate: "0.3-0.7",
+          high: "0.7-1",
+        },
       },
+      domain_context: {
+        dataset_domain: datasetDomain,
+        idea_domain: ideaDomain,
+        is_aligned: isDomainAligned,
+      },
+      insight_summary: summary,
+      data_window: sentiment.data_window,
     });
   } catch (error: unknown) {
     console.error("MARKET_ANALYSIS_OVERVIEW_ERROR", error);

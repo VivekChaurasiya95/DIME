@@ -20,13 +20,15 @@ type IdeaRecord = {
   overallViability: number | null;
   createdAt: string;
   updatedAt: string;
+  similar_projects?: SimilarProjectApiItem[];
+  novelty_score?: number;
+  max_similarity?: number;
 };
 
-type SimilarProject = {
-  id: string;
-  name: string;
-  description: string;
-  similarity: number;
+type SimilarProjectApiItem = {
+  Name: string;
+  Description: string;
+  "Similarity Score": number;
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -69,30 +71,6 @@ const extractKeywords = (text: string) => {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
     .map(([word]) => word);
-};
-
-const buildSimilarProjects = (
-  idea: IdeaRecord,
-  noveltyScore: number,
-  marketPain: number,
-): SimilarProject[] => {
-  const seedWords = extractKeywords(`${idea.title} ${idea.description}`);
-  const base = clamp((noveltyScore + marketPain) / 2, 0.45, 0.91);
-
-  return Array.from({ length: 5 }).map((_, index) => {
-    const label = seedWords[index] ?? idea.industry.toLowerCase();
-    const similarity = clamp(base - index * 0.06, 0.35, 0.92);
-
-    return {
-      id: `${idea.id}-${index + 1}`,
-      name: `${idea.industry} ${label} toolkit ${index + 1}`,
-      description:
-        index % 2 === 0
-          ? `Focuses on ${label} workflows for ${idea.targetAudience.toUpperCase()} teams.`
-          : `Addresses ${label} bottlenecks with a scoped ${idea.industry} implementation.`,
-      similarity,
-    };
-  });
 };
 
 export default function AnalyzerResultsPage() {
@@ -169,12 +147,13 @@ export default function AnalyzerResultsPage() {
       return [];
     }
 
-    return buildSimilarProjects(
-      idea,
-      metrics.noveltyNormalized,
-      metrics.marketPainNormalized,
-    );
-  }, [idea, metrics.marketPainNormalized, metrics.noveltyNormalized]);
+    return (idea.similar_projects ?? []).map((project, index) => ({
+      id: `${idea.id}-${index + 1}`,
+      title: project.Name,
+      description: project.Description,
+      similarity: project["Similarity Score"],
+    }));
+  }, [idea]);
 
   const explanation = useMemo(() => {
     if (!idea) {
@@ -387,6 +366,11 @@ export default function AnalyzerResultsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {similarProjects.length === 0 && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No similar projects found
+            </p>
+          )}
           {similarProjects.map((project) => (
             <div
               key={project.id}
@@ -394,7 +378,7 @@ export default function AnalyzerResultsPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {project.name}
+                  {project.title}
                 </p>
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
                   Similarity {project.similarity.toFixed(2)}
