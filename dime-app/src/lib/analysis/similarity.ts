@@ -5,6 +5,7 @@ import natural from "natural";
 type SimilarProject = {
   description: string;
   score: number;
+  type: "idea" | "github";
 };
 
 type SimilarityResult = {
@@ -26,10 +27,15 @@ type DatasetEntry = {
   normalized: string;
 };
 
-const DATASET_PATH = path.resolve("datasets", "github_cleaned.csv");
+const GITHUB_DATASET_PATH = path.resolve("datasets", "github_cleaned.csv");
+const IDEA_DATASET_PATHS = [
+  path.resolve("datasets", "ideas_clean_description.csv"),
+];
 const CLEAN_DESCRIPTION_COLUMN = "clean_description";
 const TOP_K = 5;
+const GITHUB_TOP_K = 3;
 const MAX_DATASET_ROWS = 2000;
+const IDEA_SCORE_BOOST = 1.1;
 const GENERIC_WORDS = new Set(["system", "platform", "tool", "app", "software"]);
 const GENERIC_WORD_MULTIPLIER = 0.45;
 const DOMAIN_WORD_MULTIPLIER = 1.65;
@@ -128,14 +134,13 @@ function calculateNorm(vector: Map<string, number>): number {
   return Math.sqrt(sumSquares);
 }
 
-function loadDatasetEntries(): DatasetEntry[] {
-  if (!fs.existsSync(DATASET_PATH)) {
-    throw new Error(`Dataset not found at ${DATASET_PATH}`);
+function loadDescriptionsFromCsv(datasetPath: string): string[] {
+  if (!fs.existsSync(datasetPath)) {
+    return [];
   }
 
-  const rawCsv = fs.readFileSync(DATASET_PATH, "utf-8").replace(/^\uFEFF/, "");
+  const rawCsv = fs.readFileSync(datasetPath, "utf-8").replace(/^\uFEFF/, "");
   const rows = parseCsvSafely(rawCsv);
-  console.log("Dataset loaded once");
 
   if (rows.length === 0) {
     return [];
@@ -148,14 +153,26 @@ function loadDatasetEntries(): DatasetEntry[] {
     throw new Error(`CSV is missing required column: ${CLEAN_DESCRIPTION_COLUMN}`);
   }
 
-  const fullDataset = rows
+  return rows
     .slice(1)
     .map((row) => (row[cleanDescriptionIndex] ?? "").trim())
     .filter((value) => value.length > 0);
+}
 
-  const dataset = fullDataset.slice(0, MAX_DATASET_ROWS);
+function loadDatasetEntries(datasetPaths: string[], datasetLabel: string): DatasetEntry[] {
+  const descriptions = datasetPaths.flatMap((datasetPath) => loadDescriptionsFromCsv(datasetPath));
 
-  return dataset.map((description) => ({
+  if (descriptions.length === 0) {
+    console.warn(`No rows found for ${datasetLabel} dataset from paths: ${datasetPaths.join(", ")}`);
+    return [];
+  }
+
+  const dedupedCorpus = [...new Set(descriptions.filter((value) => value.length > 0))].slice(
+    0,
+    MAX_DATASET_ROWS,
+  );
+
+  return dedupedCorpus.map((description) => ({
     original: description,
     normalized: normalizeText(description),
   }));
@@ -202,9 +219,15 @@ function buildCorpusFromDescriptions(descriptions: string[]): LoadedCorpus {
   return corpus;
 }
 
-const PRELOADED_DATASET = loadDatasetEntries();
-const PRECOMPUTED_CORPUS = buildCorpusFromDescriptions(
-  PRELOADED_DATASET.map((entry) => entry.original),
+const PRELOADED_GITHUB_DATASET = loadDatasetEntries([GITHUB_DATASET_PATH], "github");
+const PRELOADED_IDEA_DATASET = loadDatasetEntries(IDEA_DATASET_PATHS, "ideas");
+console.log("Loaded ideas file successfully");
+
+const PRECOMPUTED_GITHUB_CORPUS = buildCorpusFromDescriptions(
+  PRELOADED_GITHUB_DATASET.map((entry) => entry.original),
+);
+const PRECOMPUTED_IDEA_CORPUS = buildCorpusFromDescriptions(
+  PRELOADED_IDEA_DATASET.map((entry) => entry.original),
 );
 
 console.log("TF-IDF built once");
@@ -331,17 +354,25 @@ export function getSimilarity(input: string): SimilarityResult {
   const inputTokens = tokenize(normalizedInput);
   const inputDomainKeywords = extractDomainKeywords(inputTokens);
 
-  const filteredDescriptions = filterDescriptionsByDomainKeywords(
-    PRELOADED_DATASET,
+  const filteredIdeaDescriptions = filterDescriptionsByDomainKeywords(
+    PRELOADED_IDEA_DATASET,
+    inputDomainKeywords,
+  );
+  const filteredGithubDescriptions = filterDescriptionsByDomainKeywords(
+    PRELOADED_GITHUB_DATASET,
     inputDomainKeywords,
   );
 
-  const corpus =
-    filteredDescriptions.length > 0
-      ? buildCorpusFromDescriptions(filteredDescriptions)
-      : PRECOMPUTED_CORPUS;
+  const ideaCorpus =
+    filteredIdeaDescriptions.length > 0
+      ? buildCorpusFromDescriptions(filteredIdeaDescriptions)
+      : PRECOMPUTED_IDEA_CORPUS;
+  const githubCorpus =
+    filteredGithubDescriptions.length > 0
+      ? buildCorpusFromDescriptions(filteredGithubDescriptions)
+      : PRECOMPUTED_GITHUB_CORPUS;
 
-  if (corpus.descriptions.length === 0) {
+  if (ideaCorpus.descriptions.length === 0 && githubCorpus.descriptions.length === 0) {
     return {
       similar_projects: [],
       max_similarity: 0,
@@ -349,35 +380,53 @@ export function getSimilarity(input: string): SimilarityResult {
     };
   }
 
-  const domainTerms = extractDomainSpecificTerms(inputTokens, corpus);
+  const scoreCorpus = (
+    corpus: LoadedCorpus,
+    resultType: "idea" | "github",
+    scoreMultiplier = 1,
+  ): SimilarProject[] => {
+    if (corpus.descriptions.length === 0) {
+      return [];
+    }
 
-  const queryVector = buildQueryVector(normalizedInput, corpus, domainTerms);
-  const queryNorm = calculateNorm(queryVector);
+    const domainTerms = extractDomainSpecificTerms(inputTokens, corpus);
+    const queryVector = buildQueryVector(normalizedInput, corpus, domainTerms);
+    const queryNorm = calculateNorm(queryVector);
 
-  const scored = corpus.descriptions.map((description, index) => {
-    const score = cosineSimilarity(
-      queryVector,
-      queryNorm,
-      corpus.docVectors[index],
-      corpus.docNorms[index],
-      domainTerms,
-    );
+    return corpus.descriptions
+      .map((description, index) => {
+        const score = cosineSimilarity(
+          queryVector,
+          queryNorm,
+          corpus.docVectors[index],
+          corpus.docNorms[index],
+          domainTerms,
+        );
 
-    return {
-      description,
-      score,
-    };
-  });
+        return {
+          description,
+          score: score * scoreMultiplier,
+          type: resultType,
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .map((item) => ({
+        description: item.description,
+        score: roundScore(item.score),
+        type: item.type,
+      }));
+  };
 
-  const similar_projects = scored
-    .sort((a, b) => b.score - a.score)
-    .slice(0, TOP_K)
-    .map((item) => ({
-      description: item.description,
-      score: roundScore(item.score),
-    }));
+  const ideaResults = scoreCorpus(ideaCorpus, "idea", IDEA_SCORE_BOOST).slice(0, TOP_K);
+  const githubResults = scoreCorpus(githubCorpus, "github").slice(0, GITHUB_TOP_K);
 
-  const max_similarity = similar_projects.length > 0 ? similar_projects[0].score : 0;
+  const similar_projects = [...ideaResults, ...githubResults].map((item) => ({
+    description: item.description,
+    score: roundScore(item.score),
+    type: item.type,
+  }));
+
+  const max_similarity = similar_projects.reduce((max, item) => Math.max(max, item.score), 0);
   const novelty_score = roundScore(Math.max(0, 1 - max_similarity));
 
   return {

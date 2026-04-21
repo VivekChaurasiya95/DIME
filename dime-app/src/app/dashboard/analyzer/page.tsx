@@ -163,6 +163,9 @@ const getOptionLabel = (
 type IdeaApiResponse = {
   id: string;
   status?: string;
+  novelty_score?: number;
+  market_pain?: number;
+  opportunity_score?: number;
 };
 
 export default function IdeaAnalyzerPage() {
@@ -259,6 +262,18 @@ export default function IdeaAnalyzerPage() {
       }
 
       const idea = (await response.json()) as IdeaApiResponse;
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          `idea-analysis:${idea.id}`,
+          JSON.stringify({
+            novelty_score: idea.novelty_score,
+            market_pain: idea.market_pain,
+            opportunity_score: idea.opportunity_score,
+          }),
+        );
+      }
+
       router.push(
         `/dashboard/analyzer/loading?ideaId=${idea.id}&source=start-analysis`,
       );
