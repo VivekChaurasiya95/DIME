@@ -84,6 +84,7 @@ export default function AnalyzerResultsPage() {
   const [idea, setIdea] = useState<IdeaRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -206,37 +207,40 @@ export default function AnalyzerResultsPage() {
     return `${idea.title} shows ${differentiation} differentiation against nearby projects and a ${painSignal}. Opportunity Score is computed from Novelty Score and Market Pain, indicating ${metrics.opportunity >= 0.7 ? "high" : "moderate"} potential for focused validation in ${idea.industry}.`;
   }, [idea, metrics.marketPain, metrics.novelty, metrics.opportunity]);
 
-  const handleExport = () => {
-    if (!idea) {
+  const handleExport = async () => {
+    if (!idea || isExporting) {
       return;
     }
 
-    const payload = {
-      ideaId: idea.id,
-      title: idea.title,
-      analysis: {
-        novelty_score: metrics.novelty,
-        market_pain: metrics.marketPain,
-        opportunity_score: metrics.opportunity,
-        keywords,
-        similar_projects: similarProjects,
-        explanation,
-      },
-      generatedAt: new Date().toISOString(),
-    };
+    try {
+      setIsExporting(true);
+      const response = await fetch("/api/export/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ideaId: idea.id }),
+      });
 
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "Failed to generate report");
+      }
 
-    const objectUrl = window.URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = objectUrl;
-    anchor.download = `${idea.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_idea_analysis.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.URL.revokeObjectURL(objectUrl);
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `${idea.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_analysis_report.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (error: unknown) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not export report",
+      );
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleSaveSnapshot = async () => {
@@ -322,11 +326,16 @@ export default function AnalyzerResultsPage() {
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            onClick={handleExport}
+            onClick={() => void handleExport()}
+            disabled={isExporting}
             className="h-10 border-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            {isExporting ? "Generating PDF..." : "Export Report"}
           </Button>
           <Button
             onClick={handleSaveSnapshot}

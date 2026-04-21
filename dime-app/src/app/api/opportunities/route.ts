@@ -158,9 +158,10 @@ export async function GET(req: Request) {
     });
 
     const computed = filteredIdeas.map((idea) => {
-      const noveltyScore = clamp((idea.innovationScore ?? 50) / 100, 0, 1);
-      const marketPain = clamp((idea.marketDemand ?? 50) / 100, 0, 1);
-      const opportunityScore = Number(
+      // Prefer real persisted scores; fall back to derived values for legacy ideas
+      const noveltyScore = idea.noveltyScore ?? clamp((idea.innovationScore ?? 50) / 100, 0, 1);
+      const marketPain = idea.marketPainScore ?? clamp((idea.marketDemand ?? 50) / 100, 0, 1);
+      const opportunityScore = idea.opportunityScore ?? Number(
         (0.6 * noveltyScore + 0.4 * marketPain).toFixed(6),
       );
 
