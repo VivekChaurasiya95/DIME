@@ -131,9 +131,10 @@ export async function GET(req: Request) {
     const totalIdeas = analyzedIdeas.length;
 
     const scoredIdeas = analyzedIdeas.map((idea) => {
-      const novelty = clamp01((idea.innovationScore ?? 0) / 100);
-      const marketPain = clamp01((idea.marketDemand ?? 0) / 100);
-      const opportunity = 0.6 * novelty + 0.4 * marketPain;
+      // Prefer real persisted scores; fall back to derived values for legacy ideas
+      const novelty = idea.noveltyScore ?? clamp01((idea.innovationScore ?? 0) / 100);
+      const marketPain = idea.marketPainScore ?? clamp01((idea.marketDemand ?? 0) / 100);
+      const opportunity = idea.opportunityScore ?? (0.6 * novelty + 0.4 * marketPain);
 
       return {
         novelty,

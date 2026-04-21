@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -25,6 +25,8 @@ import {
   Calendar,
   ShieldCheck,
   Sparkles,
+  LogOut,
+  Check,
 } from "lucide-react";
 import { SearchInput } from "@/components/search-input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -48,6 +50,15 @@ type ProfileOverview = {
   profileCompletion: number;
 };
 
+type NotificationItem = {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  createdAt: string;
+};
+
 export default function DashboardLayout({
   children,
 }: {
@@ -65,6 +76,8 @@ export default function DashboardLayout({
     return window.document.documentElement.classList.contains("dark");
   });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -210,6 +223,47 @@ export default function DashboardLayout({
       isActive = false;
     };
   }, [session?.user?.id]);
+
+  // ---- Notifications ----
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const response = await fetch("/api/notifications", { cache: "no-store" });
+
+      if (!response.ok) return;
+
+      const payload = (await response.json()) as {
+        notifications: NotificationItem[];
+        unreadCount: number;
+      };
+
+      setNotifications(payload.notifications);
+      setUnreadCount(payload.unreadCount);
+    } catch {
+      // silent — notifications are non-critical
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    void fetchNotifications();
+    const interval = setInterval(() => void fetchNotifications(), 30_000);
+
+    return () => clearInterval(interval);
+  }, [session?.user?.id, fetchNotifications]);
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      await fetch(`/api/notifications/${id}`, { method: "PATCH" });
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // silent
+    }
+  };
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
@@ -839,6 +893,19 @@ export default function DashboardLayout({
             </button>
           )}
         </div>
+
+        {/* Logout */}
+        <div className="mt-4 border-t border-slate-200 dark:border-slate-800 pt-4">
+          <button
+            type="button"
+            suppressHydrationWarning
+            onClick={() => void signOut({ callbackUrl: "/login" })}
+            className="flex w-full items-center gap-2 rounded-md border border-red-200 dark:border-red-900/50 px-3 py-2.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </button>
+        </div>
       </form>
     </>
   );
@@ -932,37 +999,58 @@ export default function DashboardLayout({
                   className="text-slate-400 hover:text-slate-600 transition-colors relative"
                 >
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white dark:border-slate-900 px-1">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
                 </button>
 
                 {notificationsOpen && (
-                  <div className="absolute right-0 mt-3 w-72 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg p-3 z-20">
+                  <div className="absolute right-0 mt-3 w-80 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg p-3 z-20 max-h-[400px] overflow-y-auto">
                     <p className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-                      Notifications
+                      Notifications {unreadCount > 0 && `(${unreadCount} unread)`}
                     </p>
                     <div className="mt-3 space-y-2">
-                      <Link
-                        href="/dashboard/notes"
-                        className="block rounded-lg border border-slate-100 dark:border-slate-700 p-2 hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                          New analysis result is ready
+                      {notifications.length === 0 ? (
+                        <p className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">
+                          No notifications yet
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Open Notes to review highlights.
-                        </p>
-                      </Link>
-                      <Link
-                        href="/dashboard/market-analysis"
-                        className="block rounded-lg border border-slate-100 dark:border-slate-700 p-2 hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                          Market trend shifted
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Visit Market Analysis to see details.
-                        </p>
-                      </Link>
+                      ) : (
+                        notifications.map((n) => (
+                          <button
+                            key={n.id}
+                            type="button"
+                            suppressHydrationWarning
+                            onClick={() => {
+                              if (!n.read) void markNotificationRead(n.id);
+                            }}
+                            className={`w-full text-left rounded-lg border p-2.5 transition-colors ${
+                              n.read
+                                ? "border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900"
+                                : "border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20"
+                            } hover:bg-slate-50 dark:hover:bg-slate-800`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={`text-sm font-semibold ${n.read ? "text-slate-600 dark:text-slate-300" : "text-slate-900 dark:text-slate-100"}`}>
+                                {n.title}
+                              </p>
+                              {!n.read && (
+                                <span className="mt-1 flex-shrink-0 w-2 h-2 rounded-full bg-[#ea580c]" />
+                              )}
+                              {n.read && (
+                                <Check className="mt-0.5 flex-shrink-0 w-3.5 h-3.5 text-emerald-500" />
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                              {n.message}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              {new Date(n.createdAt).toLocaleString()}
+                            </p>
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}

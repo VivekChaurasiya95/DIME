@@ -49,12 +49,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts Account[]
-  sessions Session[]
-  ideas    Idea[]
-  notes    Note[]
-  tasks    WorkspaceTask[]
-  datasets UserDataset[]
+  accounts      Account[]
+  sessions      Session[]
+  ideas         Idea[]
+  notes         Note[]
+  tasks         WorkspaceTask[]
+  datasets      UserDataset[]
+  notifications Notification[]
 }
 
 model VerificationToken {
@@ -79,6 +80,11 @@ model Idea {
   competitionLevel Float?
   innovationScore  Float?
   overallViability Float?
+
+  // Scores from similarity/sentiment analysis pipeline
+  noveltyScore      Float?
+  marketPainScore   Float?
+  opportunityScore  Float?
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -141,4 +147,18 @@ model UserDataset {
 
   @@unique([userId, datasetKey])
   @@index([userId, updatedAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
 }

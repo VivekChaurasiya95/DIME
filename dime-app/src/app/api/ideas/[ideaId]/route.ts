@@ -45,9 +45,10 @@ export async function GET(_req: Request, context: RouteContext) {
       novelty_score: similarity.novelty_score,
       max_similarity: similarity.max_similarity,
       similar_projects: similarity.similar_projects.map((project) => ({
-        Name: "Related GitHub Project",
+        Name: project.type === "idea" ? "Similar Idea" : "Related GitHub Project",
         Description: project.description,
         "Similarity Score": project.score,
+        type: project.type,
       })),
     });
   } catch (error: unknown) {

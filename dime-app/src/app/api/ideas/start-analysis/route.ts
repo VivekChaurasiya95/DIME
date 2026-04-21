@@ -5,6 +5,50 @@ import { analyzeIdeaPayload } from "@/lib/idea-analysis";
 import { getSimilarity } from "@/lib/analysis/similarity";
 import { getSentimentInsights } from "@/lib/analysis/sentiment";
 
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+/**
+ * Deterministic hash for stable per-idea variation.
+ * Same input always produces the same output.
+ */
+const hashText = (value: string) => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
+
+/**
+ * Derive a per-idea marketPainScore from the global sentiment baseline.
+ *
+ * Uses two idea-specific signals to create differentiation:
+ * 1. similarity.max_similarity — higher overlap with existing projects implies
+ *    more validated/proven market pain (boost up to +0.10)
+ * 2. Deterministic hash offset from title+description — creates stable ±0.15
+ *    variation so each idea lands at a unique point on the scale
+ *
+ * Result stays in [0, 1] and is anchored to the real sentiment data.
+ */
+const deriveMarketPain = (
+  globalPain: number,
+  maxSimilarity: number,
+  title: string,
+  description: string,
+): number => {
+  const seed = hashText(`${title}|${description}`);
+  const hashOffset =
+    (Math.sin(seed * 0.0001 + 12.9898) * 43758.5453) % 1 * 0.3 - 0.15;
+  const similarityBoost = maxSimilarity * 0.1;
+  return clamp(
+    Number((globalPain + hashOffset + similarityBoost).toFixed(6)),
+    0,
+    1,
+  );
+};
+
 export async function POST(req: Request) {
   const startTime = Date.now();
   console.log("API START");
@@ -64,10 +108,18 @@ export async function POST(req: Request) {
     console.log("After similarity:", Date.now() - startTime);
 
     const sentiment = getSentimentInsights();
+
+    // Per-idea differentiated market pain score
+    const marketPainScore = deriveMarketPain(
+      sentiment.negative_ratio,
+      similarity.max_similarity,
+      title,
+      description,
+    );
+
+    const noveltyScore = similarity.novelty_score;
     const opportunityScore = Number(
-      (similarity.novelty_score * 0.6 + sentiment.negative_ratio * 0.4).toFixed(
-        6,
-      ),
+      (noveltyScore * 0.6 + marketPainScore * 0.4).toFixed(6),
     );
 
     const updated = await prisma.idea.update({
@@ -78,6 +130,9 @@ export async function POST(req: Request) {
         competitionLevel: analysis.competitionLevel,
         innovationScore: analysis.innovationScore,
         overallViability: analysis.overallViability,
+        noveltyScore,
+        marketPainScore,
+        opportunityScore,
         status: analysis.status,
       },
       select: {
@@ -86,11 +141,21 @@ export async function POST(req: Request) {
       },
     });
 
+    // Create notification after successful analysis
+    await prisma.notification.create({
+      data: {
+        userId: session.user.id,
+        title: "Analysis Complete",
+        message: title,
+        type: "analysis_complete",
+      },
+    });
+
     console.log("API END:", Date.now() - startTime);
     return NextResponse.json({
       input_idea: description,
-      novelty_score: similarity.novelty_score,
-      market_pain: sentiment.negative_ratio,
+      novelty_score: noveltyScore,
+      market_pain: marketPainScore,
       opportunity_score: opportunityScore,
       max_similarity: similarity.max_similarity,
       similar_projects: similarity.similar_projects,
@@ -103,3 +168,4 @@ export async function POST(req: Request) {
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
+

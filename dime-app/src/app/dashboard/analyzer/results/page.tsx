@@ -22,6 +22,8 @@ type IdeaRecord = {
   updatedAt: string;
   similar_projects?: SimilarProjectApiItem[];
   novelty_score?: number;
+  market_pain?: number;
+  opportunity_score?: number;
   max_similarity?: number;
 };
 
@@ -29,6 +31,7 @@ type SimilarProjectApiItem = {
   Name: string;
   Description: string;
   "Similarity Score": number;
+  type?: "idea" | "github";
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -81,6 +84,7 @@ export default function AnalyzerResultsPage() {
   const [idea, setIdea] = useState<IdeaRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,7 +106,42 @@ export default function AnalyzerResultsPage() {
         }
 
         const payload = (await response.json()) as IdeaRecord;
-        setIdea(payload);
+
+        if (typeof window === "undefined") {
+          setIdea(payload);
+          return;
+        }
+
+        const cachedAnalysis = window.sessionStorage.getItem(
+          `idea-analysis:${ideaId}`,
+        );
+
+        if (!cachedAnalysis) {
+          setIdea(payload);
+          return;
+        }
+
+        const parsed = JSON.parse(cachedAnalysis) as {
+          novelty_score?: number;
+          market_pain?: number;
+          opportunity_score?: number;
+        };
+
+        setIdea({
+          ...payload,
+          novelty_score:
+            typeof parsed.novelty_score === "number"
+              ? parsed.novelty_score
+              : payload.novelty_score,
+          market_pain:
+            typeof parsed.market_pain === "number"
+              ? parsed.market_pain
+              : payload.market_pain,
+          opportunity_score:
+            typeof parsed.opportunity_score === "number"
+              ? parsed.opportunity_score
+              : payload.opportunity_score,
+        });
       } catch (error: unknown) {
         setErrorMessage(
           error instanceof Error
@@ -119,18 +158,15 @@ export default function AnalyzerResultsPage() {
 
   const metrics = useMemo(() => {
     const feasibility = clamp(Math.round(idea?.feasibilityScore ?? 52), 0, 100);
-    const novelty = clamp(Math.round(idea?.innovationScore ?? 57), 0, 100);
-    const marketPain = clamp(Math.round(idea?.marketDemand ?? 61), 0, 100);
-    const opportunity = Math.round(novelty * 0.6 + marketPain * 0.4);
+    const novelty = clamp(idea?.novelty_score ?? 0, 0, 1);
+    const marketPain = clamp(idea?.market_pain ?? 0, 0, 1);
+    const opportunity = clamp(idea?.opportunity_score ?? 0, 0, 1);
 
     return {
       feasibility,
       novelty,
       marketPain,
       opportunity,
-      noveltyNormalized: novelty / 100,
-      marketPainNormalized: marketPain / 100,
-      opportunityNormalized: opportunity / 100,
     };
   }, [idea]);
 
@@ -149,7 +185,7 @@ export default function AnalyzerResultsPage() {
 
     return (idea.similar_projects ?? []).map((project, index) => ({
       id: `${idea.id}-${index + 1}`,
-      title: project.Name,
+      title: project.type === "idea" ? "Similar Idea" : "Related GitHub Project",
       description: project.Description,
       similarity: project["Similarity Score"],
     }));
@@ -160,46 +196,51 @@ export default function AnalyzerResultsPage() {
       return "";
     }
 
-    const differentiation = metrics.novelty >= 70 ? "strong" : "moderate";
+    const differentiation = metrics.novelty >= 0.7 ? "strong" : "moderate";
     const painSignal =
-      metrics.marketPain >= 70
+      metrics.marketPain >= 0.7
         ? "clear user pain signal"
-        : "emerging user pain signal";
+        : metrics.marketPain >= 0.5
+          ? "emerging user pain signal"
+          : "low user pain signal";
 
-    return `${idea.title} shows ${differentiation} differentiation against nearby projects and a ${painSignal}. Opportunity Score is computed from Novelty Score and Market Pain, indicating ${metrics.opportunity >= 70 ? "high" : "moderate"} potential for focused validation in ${idea.industry}.`;
+    return `${idea.title} shows ${differentiation} differentiation against nearby projects and a ${painSignal}. Opportunity Score is computed from Novelty Score and Market Pain, indicating ${metrics.opportunity >= 0.7 ? "high" : "moderate"} potential for focused validation in ${idea.industry}.`;
   }, [idea, metrics.marketPain, metrics.novelty, metrics.opportunity]);
 
-  const handleExport = () => {
-    if (!idea) {
+  const handleExport = async () => {
+    if (!idea || isExporting) {
       return;
     }
 
-    const payload = {
-      ideaId: idea.id,
-      title: idea.title,
-      analysis: {
-        novelty_score: metrics.noveltyNormalized,
-        market_pain: metrics.marketPainNormalized,
-        opportunity_score: metrics.opportunityNormalized,
-        keywords,
-        similar_projects: similarProjects,
-        explanation,
-      },
-      generatedAt: new Date().toISOString(),
-    };
+    try {
+      setIsExporting(true);
+      const response = await fetch("/api/export/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ideaId: idea.id }),
+      });
 
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "Failed to generate report");
+      }
 
-    const objectUrl = window.URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = objectUrl;
-    anchor.download = `${idea.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_idea_analysis.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.URL.revokeObjectURL(objectUrl);
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `${idea.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_analysis_report.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (error: unknown) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not export report",
+      );
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleSaveSnapshot = async () => {
@@ -285,11 +326,16 @@ export default function AnalyzerResultsPage() {
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            onClick={handleExport}
+            onClick={() => void handleExport()}
+            disabled={isExporting}
             className="h-10 border-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            <Download className="mr-2 h-4 w-4" />
-            Export Report
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
+            {isExporting ? "Generating PDF..." : "Export Report"}
           </Button>
           <Button
             onClick={handleSaveSnapshot}
@@ -318,12 +364,12 @@ export default function AnalyzerResultsPage() {
               Novelty Score
             </p>
             <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {metrics.noveltyNormalized.toFixed(2)}
+              {metrics.novelty.toFixed(2)}
             </p>
             <div className="mt-3 h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700">
               <div
                 className="h-2 rounded-full bg-[#ea580c]"
-                style={{ width: `${metrics.novelty}%` }}
+                style={{ width: `${metrics.novelty * 100}%` }}
               />
             </div>
           </div>
@@ -333,13 +379,13 @@ export default function AnalyzerResultsPage() {
               Market Pain
             </p>
             <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {metrics.marketPainNormalized.toFixed(2)}
+              {metrics.marketPain.toFixed(2)}
             </p>
             <p className="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
               Indicator:{" "}
-              {metrics.marketPain >= 70
+              {metrics.marketPain >= 0.7
                 ? "High urgency"
-                : metrics.marketPain >= 50
+                : metrics.marketPain >= 0.5
                   ? "Moderate urgency"
                   : "Low urgency"}
             </p>
@@ -350,7 +396,7 @@ export default function AnalyzerResultsPage() {
               Opportunity Score
             </p>
             <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {metrics.opportunityNormalized.toFixed(2)}
+              {metrics.opportunity.toFixed(2)}
             </p>
             <p className="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
               Derived as 0.6 x Novelty Score + 0.4 x Market Pain
