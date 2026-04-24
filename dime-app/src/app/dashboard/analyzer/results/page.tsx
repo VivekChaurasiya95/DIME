@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,7 +76,7 @@ const extractKeywords = (text: string) => {
     .map(([word]) => word);
 };
 
-export default function AnalyzerResultsPage() {
+function AnalyzerResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const ideaId = searchParams.get("ideaId");
@@ -511,5 +511,17 @@ export default function AnalyzerResultsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AnalyzerResultsPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-6xl mx-auto min-h-[50vh] flex items-center justify-center">
+        <div className="text-sm font-semibold text-slate-500">Loading...</div>
+      </div>
+    }>
+      <AnalyzerResultsContent />
+    </Suspense>
   );
 }

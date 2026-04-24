@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Check, Loader2, Lock, LineChart } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -29,7 +29,7 @@ const steps = [
   },
 ];
 
-export default function AnalyzerLoadingPage() {
+function AnalyzerLoadingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const ideaId = searchParams.get("ideaId");
@@ -261,5 +261,17 @@ export default function AnalyzerLoadingPage() {
         keyword-based problem areas.
       </p>
     </div>
+  );
+}
+
+export default function AnalyzerLoadingPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-2xl mx-auto min-h-[50vh] flex items-center justify-center">
+        <div className="text-sm font-semibold text-slate-500">Initializing...</div>
+      </div>
+    }>
+      <AnalyzerLoadingContent />
+    </Suspense>
   );
 }

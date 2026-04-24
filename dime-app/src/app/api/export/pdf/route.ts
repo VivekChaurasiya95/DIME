@@ -198,15 +198,14 @@ export async function POST(req: Request) {
         ${similarProjects
           .map(
             (p: {
-              Name: string;
-              Description: string;
-              "Similarity Score": number;
-              type?: string;
+              description: string;
+              score: number;
+              type: string;
             }) => `
         <tr>
           <td>${p.type === "idea" ? "Similar Idea" : "GitHub Project"}</td>
-          <td>${escapeHtml(p.Description)}</td>
-          <td><span class="similarity-badge">${p["Similarity Score"].toFixed(2)}</span></td>
+          <td>${escapeHtml(p.description)}</td>
+          <td><span class="similarity-badge">${p.score.toFixed(2)}</span></td>
         </tr>`
           )
           .join("")}

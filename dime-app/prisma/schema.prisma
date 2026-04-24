@@ -1,14 +1,12 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -18,12 +16,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.Text
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -67,12 +65,12 @@ model VerificationToken {
 }
 
 model Idea {
-  id            String   @id @default(cuid())
-  title         String
-  description   String
+  id             String   @id @default(cuid())
+  title          String
+  description    String   @db.Text
   targetAudience String
-  industry      String
-  status        String   @default("DRAFT") // DRAFT, ANALYZING, VALIDATED, REJECTED
+  industry       String
+  status         String   @default("DRAFT") // DRAFT, ANALYZING, VALIDATED, REJECTED
   
   // Validation Metrics from API
   feasibilityScore Float?
@@ -99,7 +97,7 @@ model Idea {
 model Note {
   id        String   @id @default(cuid())
   title     String
-  content   String
+  content   String   @db.Text
   category  String   @default("General")
   tone      String   @default("orange")
   isPinned  Boolean  @default(false)
@@ -153,7 +151,7 @@ model Notification {
   id        String   @id @default(cuid())
   userId    String
   title     String
-  message   String
+  message   String   @db.Text
   type      String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())

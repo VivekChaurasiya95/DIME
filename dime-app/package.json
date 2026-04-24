@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack -p 3000",
     "build": "next build",
+    "postinstall": "prisma generate --schema ./prisma/schema.prisma",
     "start": "next start",
     "lint": "eslint",
     "prisma:validate": "prisma validate --schema ./prisma/schema.prisma",
@@ -42,6 +43,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/natural": "^5.1.5",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.3.1",
