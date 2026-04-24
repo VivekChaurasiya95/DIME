@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithPopup } from "firebase/auth";
@@ -26,7 +26,7 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   Default: "Unable to sign in right now. Please try again.",
 };
 
-export default function LoginPage() {
+function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -315,5 +315,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="w-full min-h-[320px]" aria-hidden="true" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -122,7 +122,7 @@ function IdeaProgress({
   );
 }
 
-export default function WorkspacePage() {
+function WorkspaceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
@@ -612,5 +612,13 @@ export default function WorkspacePage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+export default function WorkspacePage() {
+  return (
+    <Suspense fallback={<div className="app-page min-h-[50vh]" />}>
+      <WorkspaceContent />
+    </Suspense>
   );
 }
