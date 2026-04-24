@@ -364,7 +364,7 @@ export default function AnalyzerResultsPage() {
               Novelty Score
             </p>
             <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {metrics.novelty.toFixed(2)}
+              {Math.round(metrics.novelty * 100)}%
             </p>
             <div className="mt-3 h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700">
               <div
@@ -372,6 +372,13 @@ export default function AnalyzerResultsPage() {
                 style={{ width: `${metrics.novelty * 100}%` }}
               />
             </div>
+            <p className="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+              {metrics.novelty >= 0.7
+                ? "Highly unique concept"
+                : metrics.novelty >= 0.4
+                  ? "Moderate differentiation"
+                  : "Similar ideas exist"}
+            </p>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
@@ -379,15 +386,29 @@ export default function AnalyzerResultsPage() {
               Market Pain
             </p>
             <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {metrics.marketPain.toFixed(2)}
+              {Math.round(metrics.marketPain * 100)}%
             </p>
+            <div className="mt-3 h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700">
+              <div
+                className={`h-2 rounded-full ${
+                  metrics.marketPain >= 0.7
+                    ? "bg-red-500"
+                    : metrics.marketPain >= 0.4
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
+                }`}
+                style={{ width: `${metrics.marketPain * 100}%` }}
+              />
+            </div>
             <p className="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
               Indicator:{" "}
               {metrics.marketPain >= 0.7
                 ? "High urgency"
                 : metrics.marketPain >= 0.5
                   ? "Moderate urgency"
-                  : "Low urgency"}
+                  : metrics.marketPain >= 0.3
+                    ? "Emerging pain signal"
+                    : "Low urgency"}
             </p>
           </div>
 
@@ -396,10 +417,16 @@ export default function AnalyzerResultsPage() {
               Opportunity Score
             </p>
             <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {metrics.opportunity.toFixed(2)}
+              {Math.round(metrics.opportunity * 100)}%
             </p>
+            <div className="mt-3 h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700">
+              <div
+                className="h-2 rounded-full bg-sky-500"
+                style={{ width: `${metrics.opportunity * 100}%` }}
+              />
+            </div>
             <p className="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-              Derived as 0.6 x Novelty Score + 0.4 x Market Pain
+              Derived as 0.6 × Novelty + 0.4 × Market Pain
             </p>
           </div>
         </CardContent>
