@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack -p 3000",
     "build": "next build",
+    "postinstall": "prisma generate --schema ./prisma/schema.prisma",
     "start": "next start",
     "lint": "eslint",
     "prisma:validate": "prisma validate --schema ./prisma/schema.prisma",

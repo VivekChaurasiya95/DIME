@@ -36,8 +36,10 @@ yarn-error.log*
 *serviceAccount*.json
 
 # local prisma sqlite database
-/prisma/prisma/*.db
-/prisma/prisma/*.db-*
+/prisma/*.db
+/prisma/*.db-journal
+/prisma/*.db-wal
+*.db
 
 # vercel
 .vercel

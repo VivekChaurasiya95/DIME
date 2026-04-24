@@ -27,9 +27,9 @@ type DatasetEntry = {
   normalized: string;
 };
 
-const GITHUB_DATASET_PATH = path.resolve("datasets", "github_cleaned.csv");
+const GITHUB_DATASET_PATH = path.join(process.cwd(), "datasets", "github_cleaned.csv");
 const IDEA_DATASET_PATHS = [
-  path.resolve("datasets", "ideas_clean_description.csv"),
+  path.join(process.cwd(), "datasets", "ideas_clean_description.csv"),
 ];
 const CLEAN_DESCRIPTION_COLUMN = "clean_description";
 const TOP_K = 5;
