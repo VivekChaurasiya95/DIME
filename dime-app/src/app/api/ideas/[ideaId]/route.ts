@@ -38,11 +38,39 @@ export async function GET(_req: Request, context: RouteContext) {
       return new NextResponse("Idea not found", { status: 404 });
     }
 
+    // Use stored scores from DB when available (already computed during analysis).
+    // Only fall back to expensive live similarity computation for unanalyzed ideas.
+    const hasStoredScores =
+      idea.noveltyScore !== null &&
+      idea.marketPainScore !== null &&
+      idea.opportunityScore !== null;
+
+    if (hasStoredScores) {
+      const similarity = getSimilarity(idea.description);
+
+      return NextResponse.json({
+        ...idea,
+        novelty_score: idea.noveltyScore,
+        market_pain: idea.marketPainScore,
+        opportunity_score: idea.opportunityScore,
+        max_similarity: similarity.max_similarity,
+        similar_projects: similarity.similar_projects.map((project) => ({
+          Name: project.type === "idea" ? "Similar Idea" : "Related GitHub Project",
+          Description: project.description,
+          "Similarity Score": project.score,
+          type: project.type,
+        })),
+      });
+    }
+
+    // Fallback: compute similarity live for ideas that haven't been analyzed yet
     const similarity = getSimilarity(idea.description);
 
     return NextResponse.json({
       ...idea,
       novelty_score: similarity.novelty_score,
+      market_pain: 0,
+      opportunity_score: similarity.novelty_score * 0.6,
       max_similarity: similarity.max_similarity,
       similar_projects: similarity.similar_projects.map((project) => ({
         Name: project.type === "idea" ? "Similar Idea" : "Related GitHub Project",

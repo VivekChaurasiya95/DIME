@@ -39,12 +39,21 @@ const deriveMarketPain = (
   description: string,
 ): number => {
   const seed = hashText(`${title}|${description}`);
-  const hashOffset =
-    (Math.sin(seed * 0.0001 + 12.9898) * 43758.5453) % 1 * 0.3 - 0.15;
+  // Use Math.abs to normalize the fractional part to [0, 1] before scaling,
+  // preventing the negative-sign bias from JS's % operator.
+  const rawFraction = Math.abs(
+    (Math.sin(seed * 0.0001 + 12.9898) * 43758.5453) % 1,
+  );
+  const hashOffset = rawFraction * 0.3 - 0.15; // symmetric range [-0.15, +0.15]
+
+  // Blend globalPain with a floor so the base is never too low.
+  // negative_ratio alone (~0.3-0.4) undersells genuine market pain.
+  const basePain = globalPain * 0.6 + 0.35;
   const similarityBoost = maxSimilarity * 0.1;
+
   return clamp(
-    Number((globalPain + hashOffset + similarityBoost).toFixed(6)),
-    0,
+    Number((basePain + hashOffset + similarityBoost).toFixed(6)),
+    0.05,
     1,
   );
 };
